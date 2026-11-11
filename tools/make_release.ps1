@@ -18,8 +18,14 @@ param(
     [string]$GameDir,
     [switch]$Mono,
     [switch]$SkipBuild,
+    [switch]$SelfBuild,
     [string]$Version
 )
+
+# -SelfBuild: oyunun olmadigi bir makinede paket hazirlamak icin.
+# DLL konmaz, kaynak kod konur; KUR.cmd ilk calistiginda kullanicinin
+# kendi makinesinde derler (orada oyun ve MelonLoader zaten var).
+if ($SelfBuild) { $SkipBuild = $true }
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -47,8 +53,8 @@ if (-not $SkipBuild) {
         exit 1
     }
     Write-Host "  [1/4] Derleniyor ($config)" -ForegroundColor Cyan
-    $buildArgs = @('-GameDir', $GameDir)
-    if ($Mono) { $buildArgs += '-Mono' }
+    $buildArgs = @{ GameDir = $GameDir }
+    if ($Mono) { $buildArgs['Mono'] = $true }
     & (Join-Path $repo 'build.ps1') @buildArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  Derleme basarisiz. Paket hazirlanmadi." -ForegroundColor Red
@@ -58,13 +64,19 @@ if (-not $SkipBuild) {
     Write-Host "  [1/4] Derleme atlandi" -ForegroundColor Cyan
 }
 
-if (-not (Test-Path $dllPath)) {
+$haveDll = Test-Path $dllPath
+if (-not $haveDll -and -not $SelfBuild) {
     Write-Host ""
     Write-Host "  Derlenmis DLL yok: $dllPath" -ForegroundColor Red
     Write-Host "  Once modu derle: .\build.ps1 -GameDir ""C:\...\Schedule I""" -ForegroundColor Yellow
+    Write-Host "  Ya da kaynak kodlu paket icin: -SelfBuild" -ForegroundColor Yellow
     exit 2
 }
-Write-Host "        $dllName  ($([math]::Round((Get-Item $dllPath).Length/1KB,1)) KB)" -ForegroundColor Green
+if ($haveDll) {
+    Write-Host "        $dllName  ($([math]::Round((Get-Item $dllPath).Length/1KB,1)) KB)" -ForegroundColor Green
+} else {
+    Write-Host "        DLL yok - kaynak kodlu paket hazirlaniyor" -ForegroundColor Yellow
+}
 
 # ------------------------------------------------------------- toplama
 
@@ -90,10 +102,26 @@ Copy-Item (Join-Path $repo 'tools\install.ps1')                 (Join-Path $pkg 
 Copy-Item (Join-Path $repo 'tools\_common.ps1')                 (Join-Path $pkg 'tools') -Force
 Copy-Item (Join-Path $repo 'release\tools\collect_missing.ps1')  (Join-Path $pkg 'tools') -Force
 
+# Kaynak kodlu pakette derleme icin gerekenler de gidiyor.
+if ($SelfBuild) {
+    Copy-Item (Join-Path $repo 'tools\bootstrap_build.ps1') (Join-Path $pkg 'tools') -Force
+    Copy-Item (Join-Path $repo 'build.ps1')                 $pkg -Force
+    $srcDst = Join-Path $pkg 'src'
+    New-Item -ItemType Directory -Path $srcDst -Force | Out-Null
+    # bin/obj yok: kullanicinin makinesinde bastan derlenecek
+    Copy-Item (Join-Path $repo 'src\*') $srcDst -Recurse -Force `
+              -Exclude @('bin','obj')
+    Get-ChildItem $srcDst -Directory -Recurse |
+        Where-Object { $_.Name -in @('bin','obj') } |
+        Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    $csFiles = @(Get-ChildItem $srcDst -Filter *.cs -File -Recurse)
+    Write-Host "        kaynak kod: $($csFiles.Count) dosya" -ForegroundColor Green
+}
+
 # mod.  Her iki dalin DLL'i varsa ikisini de koyuyoruz; kurulumcu oyunun
 # hangi dal oldugunu kendisi anlayip dogru olani seciyor. Tek dal varsa
 # diger dali kullanan kullaniciya kurulumcu bunu aciklayacak.
-Copy-Item $dllPath (Join-Path $pkg 'mod') -Force
+if ($haveDll) { Copy-Item $dllPath (Join-Path $pkg 'mod') -Force }
 $otherCfg  = if ($Mono) { 'IL2CPP' } else { 'Mono' }
 $otherName = if ($Mono) { 'ScheduleOneTR_Il2Cpp.dll' } else { 'ScheduleOneTR_Mono.dll' }
 $otherPath = Join-Path $repo "src\ScheduleOneTR\bin\$otherCfg\$otherName"
@@ -124,8 +152,11 @@ if (Test-Path $mlInst) {
 Write-Host "  [3/4] Paket denetleniyor" -ForegroundColor Cyan
 
 $must = @('KUR.cmd','KALDIR.cmd','EKSIK_METINLER.cmd','OKUBENI.txt',
-          'tools\install.ps1','tools\_common.ps1','tools\collect_missing.ps1',
-          "mod\$dllName")
+          'tools\install.ps1','tools\_common.ps1','tools\collect_missing.ps1')
+if ($haveDll)   { $must += "mod\$dllName" }
+if ($SelfBuild) { $must += @('build.ps1','tools\bootstrap_build.ps1',
+                             'src\ScheduleOneTR\ScheduleOneTR.csproj',
+                             'src\ScheduleOneTR\Plugin.cs') }
 $missing = @($must | Where-Object { -not (Test-Path (Join-Path $pkg $_)) })
 if ($missing.Count -gt 0) {
     Write-Host "  eksik dosyalar: $($missing -join ', ')" -ForegroundColor Red

@@ -1,8 +1,19 @@
 Schedule I - Turkce Yama
 ========================
 
-Kurulum tek tiklama. Hicbir sey indirmen, kurman ya da ayar yapman
-gerekmiyor (MelonLoader yoksa onu sorar, o kadar).
+Kurulum tek tiklama. Ayar yapman, komut yazman gerekmiyor.
+
+
+ONCE: MELONLOADER
+-----------------
+
+Bu yama MelonLoader uzerinde calisiyor. Kurulu degilse KUR.cmd sana
+indirme sayfasini acar. Tek seferlik.
+
+    1. MelonLoader 0.7.3'u kur (oyun olarak Schedule I'i sec)
+    2. Oyunu BIR KEZ ac, ana menuyu gor, kapat
+       (bu acilis 5-15 dakika surebilir, takilmadi - MelonLoader
+        kendi dosyalarini uretiyor, sadece ilk seferde oluyor)
 
 
 KURMAK ICIN
@@ -11,10 +22,12 @@ KURMAK ICIN
     KUR.cmd  dosyasina cift tikla.
 
 Oyunu kendisi bulur, dosyalari yerine koyar, bitince ne yapacagini yazar.
-Sonra oyunu Steam'den normal sekilde baslat.
 
-Ilk acilis uzun surer (bir-iki dakika, bazen daha fazla). Siyah ekran
-gorursen bekle, takilmadi.
+Ilk calistirmada "Derlensin mi?" diye sorarsa E yaz, Enter'a bas.
+Yama senin makinene gore hazirlanacak; gerekli her sey otomatik
+iniyor, 5-15 dakika surebilir. Bu sadece bir kere oluyor.
+
+Sonra oyunu Steam'den normal sekilde baslat.
 
 
 OYUN ICINDE

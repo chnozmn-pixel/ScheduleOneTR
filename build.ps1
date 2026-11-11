@@ -1,4 +1,4 @@
-<#
+﻿<#
     Schedule I Türkçe Yama - derleme betiği
 
     Kullanım:
@@ -41,15 +41,15 @@ IL2CPP'de ilk açılış, derleme için gereken assembly'leri üretir
 
 $proj = Join-Path $PSScriptRoot 'src\ScheduleOneTR\ScheduleOneTR.csproj'
 
-$args = @(
+$dotnetArgs = @(
     'build', $proj,
     '-c', $config,
     "-p:GameDir=$GameDir"
 )
-if ($Deploy) { $args += '-p:DeployToGame=true' }
+if ($Deploy) { $dotnetArgs += '-p:DeployToGame=true' }
 
 Write-Host "Derleniyor: $config" -ForegroundColor Cyan
-& dotnet @args
+& dotnet @dotnetArgs
 if ($LASTEXITCODE -ne 0) { throw "Derleme başarısız (çıkış kodu $LASTEXITCODE)." }
 
 $outName = if ($Mono) { 'ScheduleOneTR_Mono.dll' } else { 'ScheduleOneTR_Il2Cpp.dll' }

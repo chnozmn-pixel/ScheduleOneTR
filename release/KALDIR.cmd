@@ -16,7 +16,17 @@ if /i not "%ONAY%"=="E" (
     exit /b 0
 )
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\install.ps1" -Uninstall
+set "PS1=%~dp0tools\install.ps1"
+if not exist "%PS1%" set "PS1=%~dp0..\tools\install.ps1"
+if not exist "%PS1%" (
+    echo.
+    echo   Kaldirma dosyasi bulunamadi: tools\install.ps1
+    echo.
+    pause
+    exit /b 9
+)
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%PS1%" -Uninstall
 set RC=%ERRORLEVEL%
 
 echo.

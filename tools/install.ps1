@@ -154,11 +154,56 @@ Write-Info ("oyun surumu: " + $(if ($isMono) { 'Mono (alternate dal)' } else { '
 
 Write-Step 3 $steps "Mod dosyasi kopyalaniyor"
 
-$srcDll = Join-Path $here "mod\$wantDll"
-if (-not (Test-Path $srcDll)) {
-    $have = @(Get-ChildItem (Join-Path $here 'mod') -Filter '*.dll' -File -ErrorAction SilentlyContinue |
-              ForEach-Object { $_.Name })
-    if ($have.Count -eq 0) {
+# DLL iki yerde olabilir: hazir pakette mod\ altinda, depodan
+# calistirildiginda ise derleme ciktisinda.
+$cfg = if ($isMono) { 'Mono' } else { 'IL2CPP' }
+$srcDll = @(
+    (Join-Path $here "mod\$wantDll"),
+    (Join-Path $here "src\ScheduleOneTR\bin\$cfg\$wantDll")
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $srcDll) {
+    $have = @(
+        foreach ($d in @((Join-Path $here 'mod'), (Join-Path $here 'src\ScheduleOneTR\bin'))) {
+            if (Test-Path $d) {
+                Get-ChildItem $d -Filter '*.dll' -File -Recurse -ErrorAction SilentlyContinue |
+                    ForEach-Object { $_.Name }
+            }
+        }
+    ) | Select-Object -Unique
+
+    # Depo klasorunden calistirildiysa sorun paket degil, mod derlenmemis.
+    $isRepo = Test-Path (Join-Path $here 'src\ScheduleOneTR\ScheduleOneTR.csproj')
+
+    if ($isRepo) {
+        # Kaynak kodu elimizde: dal uymasa bile burada derleyebiliriz.
+        Write-Info "Mod bu makine icin henuz derlenmemis."
+        Write-Info "Simdi derlenebilir; gereken her sey otomatik indirilir."
+        Write-Info "Ilk sefer 5-15 dakika surebilir."
+        Write-Host ""
+        Write-Host "      Derlensin mi? (E / H): " -NoNewline
+        if ((Read-Host).Trim().ToUpperInvariant() -eq 'E') {
+            $bootstrap = Join-Path $PSScriptRoot 'bootstrap_build.ps1'
+            if (-not (Test-Path $bootstrap)) {
+                Write-Bad "Derleme betigi yok: $bootstrap"
+                exit 3
+            }
+            $bsArgs = @{ GameDir = $GameDir }
+            if ($isMono) { $bsArgs['Mono'] = $true }
+            & $bootstrap @bsArgs
+            if ($LASTEXITCODE -ne 0) { exit 3 }
+
+            $srcDll = Join-Path $here "src\ScheduleOneTR\bin\$cfg\$wantDll"
+            if (-not (Test-Path $srcDll)) {
+                Write-Bad "Derleme bitti ama DLL bulunamadi."
+                exit 3
+            }
+        } else {
+            Write-Host ""
+            Write-Host "  Kurulum yarida kaldi: mod derlenmedi." -ForegroundColor Yellow
+            exit 3
+        }
+    } elseif ($have.Count -eq 0) {
         Write-Bad "Pakette mod dosyasi yok."
         Write-Info "Paket eksik indirilmis olabilir. Yeniden indir."
     } else {
@@ -174,7 +219,8 @@ if (-not (Test-Path $srcDll)) {
         Write-Info "     '$otherBranch' dala gec (ana dal icin beta secimini kaldir)."
         Write-Info "  2. Ya da bize haber ver, '$branch' dal icin paket hazirlayalim."
     }
-    exit 3
+    # Derleme yukarida basariliysa $srcDll dolmustur; dolmadiysa cikiyoruz.
+    if (-not $srcDll) { exit 3 }
 }
 
 New-Item -ItemType Directory -Path $modsDir -Force | Out-Null
