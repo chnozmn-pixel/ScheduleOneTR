@@ -243,10 +243,10 @@ Yama, MelonLoader üzerinden oyuna giriyor ve **Harmony** ile `TMP_Text.text`
 özelliğine bağlanıyor: oyun bir yazıyı ekrana koymadan hemen önce yama araya
 girip o yazının Türkçesini veriyor.
 
-Oyunun verisine hiç dokunmuyor. Bir ürünün adı veri tarafında hâlâ `Cocaine`;
-sadece ekranda `Kokain` görünüyor. Kayıtlar, görev mantığı, çok oyuncu
-senkronizasyonu İngilizce metinle çalışmaya devam ediyor — yamayı kaldırınca
-hiçbir iz kalmamasının sebebi bu.
+Oyunun verisine hiç dokunmuyor. Ana menüdeki düğme veri tarafında hâlâ
+`Continue`; sadece ekranda `Devam Et` görünüyor. Kayıtlar, görev mantığı, çok
+oyuncu senkronizasyonu İngilizce metinle çalışmaya devam ediyor — yamayı
+kaldırınca hiçbir iz kalmamasının sebebi bu.
 
 **Eşleştirme** sırayla deneniyor: birebir → baş/son boşluk kırpılmış hâli →
 sayı şablonu (`Day 5` → `Day {0}`) → tek etiket sarmalı (`<b>Continue</b>`) →
@@ -294,7 +294,7 @@ içermez, dağıtmaz; yalnızca ekrandaki yazının görünüşünü değiştiri
 Çeviri eklemek, metin çıkarmak, paket hazırlamak:
 **[docs/GELISTIRME.md](docs/GELISTIRME.md)**
 
-Terim sözlüğü (Dealer → Torbacı gibi kararlar):
+Terim sözlüğü (Customer → Müşteri gibi kararlar):
 **[languages/tr/SOZLUK.md](languages/tr/SOZLUK.md)**
 
 ---
