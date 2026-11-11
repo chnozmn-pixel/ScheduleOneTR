@@ -2,9 +2,6 @@
     Schedule I Turkce Yama - tek satirlik web kurulumu.
 
     Kullanim (PowerShell penceresinde):
-        irm https://chnozmn-pixel.github.io/ScheduleOneTR/kur.ps1 | iex
-
-    ya da dogrudan depodan:
         irm https://raw.githubusercontent.com/chnozmn-pixel/ScheduleOneTR/main/kur.ps1 | iex
 
     Yaptigi is:
