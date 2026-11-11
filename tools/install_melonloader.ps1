@@ -24,8 +24,14 @@ $ErrorActionPreference = 'Stop'
 
 function Write-B([string]$t) { Write-Host "      $t" }
 
+. "$PSScriptRoot\_common.ps1"
+
 $asset = "MelonLoader.$Arch.zip"
 $url   = "https://github.com/LavaGang/MelonLoader/releases/download/v$Version/$asset"
+
+Write-Detail "surum : $Version ($Arch)"
+Write-Detail "adres : $url"
+Write-Detail "hedef : $GameDir"
 
 # Oyun calisiyorsa version.dll kilitli olur, yazamadan once soyleyelim
 $running = @(Get-Process -Name 'Schedule I' -ErrorAction SilentlyContinue)
@@ -69,10 +75,12 @@ if ($size -lt 5MB) {
 Write-B ("indirildi: {0:N0} MB" -f ($size / 1MB))
 
 Write-B "oyun klasorune aciliyor"
+$yazilan = 0
 try {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zip = [IO.Compression.ZipFile]::OpenRead($tmp)
     try {
+        Write-Detail "arsivde $($zip.Entries.Count) girdi var"
         foreach ($entry in $zip.Entries) {
             $dst = Join-Path $GameDir $entry.FullName
             if ([string]::IsNullOrEmpty($entry.Name)) {
@@ -85,6 +93,10 @@ try {
                 New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
             }
             [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $dst, $true)
+            $yazilan++
+            # Kok seviyesindeki dosyalari tek tek goster, geri kalani sayiyla
+            if ($entry.FullName -notmatch '/') { Write-Detail "yazildi: $($entry.FullName)" }
+            elseif ($yazilan % 200 -eq 0)      { Write-Detail "$yazilan dosya yazildi..." }
         }
     } finally {
         $zip.Dispose()
@@ -108,5 +120,10 @@ if (-not $ok) {
     exit 24
 }
 
+Write-Detail "toplam $yazilan dosya yazildi"
+foreach ($k in @('MelonLoader\net6\MelonLoader.dll', 'MelonLoader\net35\MelonLoader.dll', 'version.dll')) {
+    $p = Join-Path $GameDir $k
+    if (Test-Path $p) { Write-Detail "dogrulandi: $k" }
+}
 Write-B "MelonLoader $Version kuruldu"
 exit 0

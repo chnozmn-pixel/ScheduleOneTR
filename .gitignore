@@ -9,3 +9,5 @@ ayrilmis/
 ScheduleOneTR-cikarici/
 dist/
 release/MelonLoader.Installer.exe
+kurulum-log.txt
+.dotnet/

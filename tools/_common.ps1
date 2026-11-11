@@ -3,6 +3,14 @@
     Dot-source ile yuklenir:  . "$PSScriptRoot\_common.ps1"
 #>
 
+# Kurulumcu ne yaptigini satir satir yazsin diye. Sorun ciktiginda
+# kullanicidan ekran goruntusu istemek yerine neyin nerede durdugu
+# dogrudan goruluyor. Kapatmak icin: $ShowDetail = $false
+$script:ShowDetail = $true
+function Write-Detail([string]$t) {
+    if ($script:ShowDetail) { Write-Host "        . $t" -ForegroundColor DarkGray }
+}
+
 # Schedule I kurulumunu Steam kutuphanelerinden bulur (baska disklerdekiler dahil).
 # Bulamazsa $null doner.
 function Find-ScheduleOne {
@@ -11,28 +19,42 @@ function Find-ScheduleOne {
     foreach ($key in @('HKCU:\Software\Valve\Steam', 'HKLM:\SOFTWARE\WOW6432Node\Valve\Steam')) {
         try {
             $p = (Get-ItemProperty -Path $key -ErrorAction Stop).InstallPath
-            if ($p) { $libs.Add($p) }
-        } catch { }
+            if ($p) { $libs.Add($p); Write-Detail "kayit defteri: $key -> $p" }
+        } catch {
+            Write-Detail "kayit defteri: $key - kayit yok"
+        }
     }
     foreach ($p in @("${env:ProgramFiles(x86)}\Steam", "$env:ProgramFiles\Steam")) {
-        if (Test-Path $p) { $libs.Add($p) }
+        if (Test-Path $p) { $libs.Add($p); Write-Detail "klasor: $p" }
     }
 
     # libraryfolders.vdf: diger disklerdeki kutuphaneler
     foreach ($lib in @($libs)) {
         $vdf = Join-Path $lib 'steamapps\libraryfolders.vdf'
         if (-not (Test-Path $vdf)) { continue }
+        Write-Detail "kutuphane listesi okunuyor: $vdf"
         foreach ($m in [regex]::Matches((Get-Content $vdf -Raw), '"path"\s*"([^"]+)"')) {
             # Parantez sart: PowerShell metot cagrisi icindeki virgulu argument
             # ayiricisi sayar, -replace'in virgulu de dahil.
-            $libs.Add(($m.Groups[1].Value -replace '\\\\', '\'))
+            $extra = ($m.Groups[1].Value -replace '\\\\', '\')
+            $libs.Add($extra)
+            Write-Detail "ek kutuphane: $extra"
         }
     }
 
-    foreach ($lib in ($libs | Select-Object -Unique)) {
+    $uniq = @($libs | Select-Object -Unique)
+    Write-Detail "toplam $($uniq.Count) kutuphane taranacak"
+    foreach ($lib in $uniq) {
         $cand = Join-Path $lib 'steamapps\common\Schedule I'
-        if (Test-Path (Join-Path $cand 'Schedule I.exe')) { return $cand }
-        if (Test-Path $cand) { return $cand }
+        if (Test-Path (Join-Path $cand 'Schedule I.exe')) {
+            Write-Detail "bulundu (exe ile): $cand"
+            return $cand
+        }
+        if (Test-Path $cand) {
+            Write-Detail "bulundu (exe yok ama klasor var): $cand"
+            return $cand
+        }
+        Write-Detail "yok: $cand"
     }
     return $null
 }

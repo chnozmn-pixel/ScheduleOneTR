@@ -24,6 +24,8 @@ $localSdk  = Join-Path $root '.dotnet'
 $localExe  = Join-Path $localSdk 'dotnet.exe'
 $config    = if ($Mono) { 'Mono' } else { 'IL2CPP' }
 
+. "$PSScriptRoot\_common.ps1"
+
 function Write-B([string]$t) { Write-Host "      $t" }
 
 # ------------------------------------------------------------ SDK var mi?
@@ -36,10 +38,15 @@ function Get-UsableDotnet {
     if ($sys) { $candidates += $sys.Source }
 
     foreach ($exe in $candidates) {
+        Write-Detail "aday: $exe"
         # --list-sdks hata verirse (bozuk kurulum) bu adayi atla
         $sdks = & $exe --list-sdks 2>$null
-        if ($LASTEXITCODE -ne 0 -or -not $sdks) { continue }
+        if ($LASTEXITCODE -ne 0 -or -not $sdks) {
+            Write-Detail "  surum listesi alinamadi, atlaniyor"
+            continue
+        }
         foreach ($line in $sdks) {
+            Write-Detail "  SDK: $line"
             # "8.0.404 [C:\Program Files\dotnet\sdk]"
             if ($line -match '^(\d+)\.') {
                 if ([int]$Matches[1] -ge 6) { return $exe }
@@ -112,6 +119,14 @@ if (-not (Test-Path $buildPs1)) {
 $buildArgs = @{ GameDir = $GameDir }
 if ($Mono) { $buildArgs['Mono'] = $true }
 
+$asmDir = Join-Path $GameDir "MelonLoader\Il2CppAssemblies"
+if (Test-Path $asmDir) {
+    Write-Detail "referans klasoru: $asmDir"
+    Write-Detail "  $(@(Get-ChildItem $asmDir -Filter *.dll -File).Count) dll taranacak - uzun suren kisim burasi"
+}
+Write-Detail "calistirilan: build.ps1 -GameDir ""$GameDir""$(if ($Mono) { ' -Mono' })"
+$buildStart = Get-Date
+
 # build.ps1 hata durumunda throw ediyor; yigin izini kullaniciya
 # gostermek yerine yakalayip tek satirlik mesaja ceviriyoruz.
 $buildFailed = $false
@@ -137,6 +152,9 @@ if (-not (Test-Path $dllPath)) {
     exit 14
 }
 
+$d = Get-Item $dllPath
 Write-Host ""
 Write-Host "  Derleme tamam: $dllName" -ForegroundColor Green
+Write-Detail ("boyut: {0:N1} KB" -f ($d.Length/1KB))
+Write-Detail ("sure : {0:N1} dakika" -f ((Get-Date) - $buildStart).TotalMinutes)
 exit 0

@@ -31,6 +31,18 @@ $ErrorActionPreference = 'Stop'
 $here = Split-Path $PSScriptRoot -Parent      # paketin kok klasoru
 . "$PSScriptRoot\_common.ps1"
 
+# Ekrana yazilan her sey dosyaya da gitsin: sorun ciktiginda kullanici
+# ekran goruntusu yerine bu dosyayi gonderiyor.
+$logFile = Join-Path $here 'kurulum-log.txt'
+try {
+    Start-Transcript -Path $logFile -Force | Out-Null
+    $logging = $true
+} catch {
+    $logging = $false
+}
+
+$startedAt = Get-Date
+
 function Write-Step([int]$n, [int]$of, [string]$text) {
     Write-Host ""
     Write-Host "[$n/$of] $text" -ForegroundColor Cyan
@@ -42,6 +54,14 @@ function Write-Info([string]$t) { Write-Host "      $t" }
 Write-Host ""
 Write-Host "  Schedule I - Turkce Yama" -ForegroundColor White
 Write-Host "  ========================"
+Write-Host ""
+Write-Detail "tarih      : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+Write-Detail "paket      : $here"
+Write-Detail "windows    : $([Environment]::OSVersion.Version) / $(if ([Environment]::Is64BitOperatingSystem) { '64 bit' } else { '32 bit' })"
+Write-Detail "powershell : $($PSVersionTable.PSVersion)"
+Write-Detail "kullanici  : $(if (([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 'yonetici' } else { 'normal' })"
+if ($logging) { Write-Detail "gunluk     : $logFile" }
+if ($Force)   { Write-Detail "kip        : -Force (bastan derleme)" }
 
 $steps = if ($Uninstall) { 3 } else { 6 }
 
@@ -53,6 +73,7 @@ $APPID = '3164500'
 Write-Step 1 $steps "Oyun klasoru araniyor"
 
 if ($GameDir) {
+    Write-Detail "klasor elle verildi, arama yapilmiyor"
     if (-not (Test-Path -LiteralPath $GameDir -PathType Container)) {
         Write-Bad "Verdigin klasor yok: $GameDir"
         exit 1
@@ -78,9 +99,17 @@ if (-not $GameDir) {
 }
 
 Write-Ok $GameDir
-if (-not (Test-Path (Join-Path $GameDir 'Schedule I.exe'))) {
+$exePath = Join-Path $GameDir 'Schedule I.exe'
+if (Test-Path $exePath) {
+    $exe = Get-Item $exePath
+    Write-Detail ("Schedule I.exe: {0:N1} MB, {1:yyyy-MM-dd}" -f ($exe.Length/1MB), $exe.LastWriteTime)
+    $ver = $exe.VersionInfo.FileVersion
+    if ($ver) { Write-Detail "exe surumu: $ver" }
+} else {
     Write-Host "      Uyari: bu klasorde 'Schedule I.exe' yok. Yine de devam ediliyor." -ForegroundColor Yellow
 }
+$proc = @(Get-Process -Name 'Schedule I' -ErrorAction SilentlyContinue)
+Write-Detail ("oyun su an " + $(if ($proc.Count -gt 0) { 'ACIK' } else { 'kapali' }))
 
 $modsDir = Join-Path $GameDir 'Mods'
 $userDir = Join-Path $GameDir 'UserData\ScheduleOneTR'
@@ -116,10 +145,18 @@ Write-Step 2 $steps "MelonLoader denetleniyor"
 
 $ml6  = Join-Path $GameDir 'MelonLoader\net6\MelonLoader.dll'
 $ml35 = Join-Path $GameDir 'MelonLoader\net35\MelonLoader.dll'
+Write-Detail "bakilan: $ml6"
+Write-Detail "  -> $(if (Test-Path $ml6) { 'var' } else { 'yok' })"
+Write-Detail "bakilan: $ml35"
+Write-Detail "  -> $(if (Test-Path $ml35) { 'var' } else { 'yok' })"
 $hasMl = (Test-Path $ml6) -or (Test-Path $ml35)
 
 if ($hasMl) {
-    Write-Ok "kurulu"
+    $mlDll = if (Test-Path $ml6) { $ml6 } else { $ml35 }
+    $mlVer = (Get-Item $mlDll).VersionInfo.FileVersion
+    Write-Ok "kurulu$(if ($mlVer) { " (surum $mlVer)" })"
+    $verDll = Join-Path $GameDir 'version.dll'
+    Write-Detail "version.dll: $(if (Test-Path $verDll) { 'var' } else { 'YOK - oyun MelonLoader ile acilmaz' })"
 } else {
     Write-Info "MelonLoader kurulu degil, simdi kuruluyor."
     Write-Info "Bu yamanin calismasi icin gerekli; tek seferlik."
@@ -164,10 +201,25 @@ function Get-AsmCount {
     return @(Get-ChildItem $asmDir -Filter *.dll -File -ErrorAction SilentlyContinue).Count
 }
 
+Write-Detail "bakilan: $asmDir"
+
 if ($isMono) {
     Write-Ok "Mono dali, bu adim gerekmiyor"
+    Write-Detail "Mono'da referanslar 'Schedule I_Data\Managed' icinden geliyor"
 } elseif ((Get-AsmCount) -gt 20) {
-    Write-Ok "hazir ($(Get-AsmCount) dosya)"
+    $n = Get-AsmCount
+    Write-Ok "hazir ($n dosya)"
+    $newest = Get-ChildItem $asmDir -Filter *.dll -File |
+              Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    Write-Detail "en yeni dosya: $($newest.Name) - $($newest.LastWriteTime.ToString('yyyy-MM-dd HH:mm'))"
+    if (Test-Path $exePath) {
+        if ($newest.LastWriteTime -lt (Get-Item $exePath).LastWriteTime) {
+            Write-Host "      Uyari: bu dosyalar oyundan eski. Oyun guncellenmis" -ForegroundColor Yellow
+            Write-Host "      olabilir; ceviri bozuksa GUNCELLE.cmd calistir." -ForegroundColor Yellow
+        } else {
+            Write-Detail "dosyalar oyundan yeni, uyumlu gorunuyor"
+        }
+    }
 } else {
     Write-Info "Oyunun bir kez acilmasi gerekiyor: MelonLoader ilk acilista"
     Write-Info "yamanin derlenmesi icin gereken dosyalari uretiyor."
@@ -183,6 +235,7 @@ if ($isMono) {
         exit 5
     }
 
+    Write-Detail "calistirilan: steam://rungameid/$APPID"
     Start-Process "steam://rungameid/$APPID"
     Write-Host ""
     Write-Info "Oyun baslatiliyor. Ana menuyu gorunce oyunu KAPAT."
@@ -190,14 +243,23 @@ if ($isMono) {
     Write-Host ""
 
     # Dosyalar olusana kadar bekle (en fazla 30 dakika)
-    $limit = (Get-Date).AddMinutes(30)
-    $last  = -1
+    $waitStart = Get-Date
+    $limit     = $waitStart.AddMinutes(30)
+    $last      = -1
+    $lastTick  = Get-Date
     while ((Get-Date) -lt $limit) {
         Start-Sleep -Seconds 5
         $n = Get-AsmCount
-        if ($n -ne $last) {
-            Write-Host "`r      uretilen dosya: $n   " -NoNewline
+        $gecen = [int]((Get-Date) - $waitStart).TotalSeconds
+        $acik  = @(Get-Process -Name 'Schedule I' -ErrorAction SilentlyContinue).Count -gt 0
+
+        # Sayi degisince ya da 60 saniyede bir yaz: ekran donmus gorunmesin
+        if ($n -ne $last -or ((Get-Date) - $lastTick).TotalSeconds -ge 60) {
+            $dk = [int]($gecen / 60); $sn = $gecen % 60
+            Write-Host ("      {0,3}:{1:00} gecti | uretilen dosya: {2,5} | oyun: {3}" -f `
+                        $dk, $sn, $n, $(if ($acik) { 'acik' } else { 'henuz acilmadi' }))
             $last = $n
+            $lastTick = Get-Date
         }
         if ($n -gt 20) {
             # Sayi artmayi birakinca is bitmis demektir
@@ -215,14 +277,18 @@ if ($isMono) {
         exit 5
     }
     Write-Ok "hazir ($(Get-AsmCount) dosya)"
+    Write-Detail ("bekleme suresi: {0:N1} dakika" -f ((Get-Date) - $waitStart).TotalMinutes)
 
     # Oyun aciksa derleme ve kopyalama sirasinda dosya kilitlenmesin
     $proc = @(Get-Process -Name 'Schedule I' -ErrorAction SilentlyContinue)
     if ($proc.Count -gt 0) {
         Write-Host ""
         Write-Info "Devam etmek icin oyunu kapat. Bekliyorum..."
+        $kapandi = Get-Date
         while (@(Get-Process -Name 'Schedule I' -ErrorAction SilentlyContinue).Count -gt 0) {
             Start-Sleep -Seconds 3
+            $g = [int]((Get-Date) - $kapandi).TotalSeconds
+            if ($g % 30 -lt 3) { Write-Detail "hala acik ($g saniyedir bekleniyor)" }
         }
         Write-Ok "oyun kapandi"
     }
@@ -242,14 +308,22 @@ if ($Force -and (Test-Path (Join-Path $here 'src\ScheduleOneTR\ScheduleOneTR.csp
     Write-Info "yeniden derleme istendi, eski ciktilar siliniyor"
     foreach ($d in @('src\ScheduleOneTR\bin', 'src\ScheduleOneTR\obj')) {
         $p = Join-Path $here $d
-        if (Test-Path $p) { Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue }
+        if (Test-Path $p) {
+            Write-Detail "siliniyor: $d"
+            Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue
+        } else {
+            Write-Detail "zaten yok: $d"
+        }
     }
 }
 
-$srcDll = @(
+Write-Detail "aranan dosya adi: $wantDll ($cfg)"
+$aday = @(
     (Join-Path $here "mod\$wantDll"),
     (Join-Path $here "src\ScheduleOneTR\bin\$cfg\$wantDll")
-) | Where-Object { Test-Path $_ } | Select-Object -First 1
+)
+foreach ($a in $aday) { Write-Detail "aday: $a -> $(if (Test-Path $a) { 'VAR' } else { 'yok' })" }
+$srcDll = $aday | Where-Object { Test-Path $_ } | Select-Object -First 1
 
 if (-not $srcDll) {
     $have = @(
@@ -322,6 +396,10 @@ if (Test-Path $otherPath) {
     Write-Info "yanlis surum kaldirildi: $other"
 }
 
+$dllInfo = Get-Item $srcDll
+Write-Detail "kaynak : $srcDll"
+Write-Detail ("boyut  : {0:N1} KB, derlenme: {1:yyyy-MM-dd HH:mm}" -f ($dllInfo.Length/1KB), $dllInfo.LastWriteTime)
+Write-Detail "hedef  : $(Join-Path $modsDir $wantDll)"
 try {
     Copy-Item $srcDll (Join-Path $modsDir $wantDll) -Force
 } catch {
@@ -330,6 +408,12 @@ try {
     exit 3
 }
 Write-Ok "Mods\$wantDll"
+
+$digerModlar = @(Get-ChildItem $modsDir -Filter *.dll -File |
+                 Where-Object { $_.Name -ne $wantDll })
+if ($digerModlar.Count -gt 0) {
+    Write-Detail "Mods klasorundeki diger modlar: $($digerModlar.Name -join ', ')"
+}
 
 # ------------------------------------------------------- 4. ceviri dosyalari
 
@@ -347,16 +431,25 @@ if ($files.Count -eq 0) {
     Write-Bad "Pakette hic ceviri dosyasi yok."
     exit 4
 }
-foreach ($f in $files) {
-    Copy-Item $f.FullName (Join-Path $langDst $f.Name) -Force
-}
+Write-Detail "kaynak: $srcLang"
+Write-Detail "hedef : $langDst"
 $lineCount = 0
 foreach ($f in $files) {
-    $lineCount += @([System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8) |
-                    Where-Object { $_ -match '^\s*\d*\s*\|?.*=.' -and $_ -notmatch '^\s*(//|@)' }).Count
+    Copy-Item $f.FullName (Join-Path $langDst $f.Name) -Force
+    $n = @([System.IO.File]::ReadAllLines($f.FullName, [System.Text.Encoding]::UTF8) |
+           Where-Object { $_ -match '^\s*\d*\s*\|?.*=.' -and $_ -notmatch '^\s*(//|@)' }).Count
+    $lineCount += $n
+    Write-Detail ("{0,-22} {1,6} satir, {2,6:N0} KB" -f $f.Name, $n, ($f.Length/1KB))
 }
 Write-Ok "$($files.Count) dosya, yaklasik $lineCount cevrili satir"
 Write-Info "konum: UserData\ScheduleOneTR\languages\tr"
+
+# Onceki oyunlardan kalan metin dokumu varsa soyleyelim
+$dumpFile = Join-Path $userDir 'export\english_strings.txt'
+if (Test-Path $dumpFile) {
+    $d = Get-Item $dumpFile
+    Write-Detail ("onceki metin dokumu var: {0:N0} KB, {1:yyyy-MM-dd HH:mm}" -f ($d.Length/1KB), $d.LastWriteTime)
+}
 
 # ----------------------------------------------------------------- 5. ozet
 
@@ -376,6 +469,20 @@ Write-Host "    F9   -  ceviri dosyalarini yeniden yukle"
 Write-Host ""
 Write-Host "  Bir sey ters giderse:" -ForegroundColor White
 Write-Host "    - Oyun acilmiyorsa KALDIR.cmd'yi calistir, oyun eski haline doner."
+Write-Host "    - Oyun guncellendiyse GUNCELLE.cmd'yi calistir."
 Write-Host "    - Harfler kare kare cikiyorsa haber ver (font sorunu)."
 Write-Host "    - Ingilizce kalan yazilari EKSIK_METINLER.cmd ile toplayip gonder."
 Write-Host ""
+Write-Host "  Kurulum ozeti:" -ForegroundColor White
+Write-Host "    oyun     : $GameDir"
+Write-Host "    mod      : Mods\$wantDll"
+Write-Host "    ceviri   : $($files.Count) dosya / $lineCount satir"
+Write-Host ("    sure     : {0:N1} dakika" -f ((Get-Date) - $startedAt).TotalMinutes)
+if ($logging) {
+    Write-Host "    gunluk   : $logFile"
+    Write-Host ""
+    Write-Host "  Sorun olursa bu gunluk dosyasini gonder." -ForegroundColor White
+}
+Write-Host ""
+
+if ($logging) { try { Stop-Transcript | Out-Null } catch { } }
