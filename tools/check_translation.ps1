@@ -1,4 +1,4 @@
-<#
+﻿<#
     Ceviri dosyasini denetler. Kurulum gerektirmez.
 
     Modun LanguageFile.cs ayristiricisiyla ayni kurallara gore bakar:

@@ -18,7 +18,11 @@
 [CmdletBinding()]
 param(
     [string]$GameDir,
-    [switch]$Uninstall
+    [switch]$Uninstall,
+    # Oyun guncellendikten sonra: eski DLL'i yok sayip bastan derler.
+    # Oyun guncellenince MelonLoader'in urettigi assembly'ler degisiyor,
+    # onlara karsi derlenmis eski mod artik uymayabiliyor.
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -39,7 +43,10 @@ Write-Host ""
 Write-Host "  Schedule I - Turkce Yama" -ForegroundColor White
 Write-Host "  ========================"
 
-$steps = if ($Uninstall) { 3 } else { 5 }
+$steps = if ($Uninstall) { 3 } else { 6 }
+
+# Steam uzerinden baslatmak icin (oyunun Steam kimligi)
+$APPID = '3164500'
 
 # ----------------------------------------------------------- 1. oyunu bul
 
@@ -114,35 +121,29 @@ $hasMl = (Test-Path $ml6) -or (Test-Path $ml35)
 if ($hasMl) {
     Write-Ok "kurulu"
 } else {
-    Write-Bad "MelonLoader kurulu degil."
-    Write-Host ""
-    Write-Info "Bu yama MelonLoader uzerinde calisiyor. Once onu kurmak gerekiyor;"
-    Write-Info "tek seferlik bir islem."
+    Write-Info "MelonLoader kurulu degil, simdi kuruluyor."
+    Write-Info "Bu yamanin calismasi icin gerekli; tek seferlik."
     Write-Host ""
 
-    $bundled = Join-Path $here 'MelonLoader.Installer.exe'
-    if (Test-Path $bundled) {
-        Write-Info "MelonLoader kurucusu bu pakette var. Simdi acilsin mi?"
-        Write-Host "      (E / H): " -NoNewline
-        if ((Read-Host).Trim().ToUpperInvariant() -eq 'E') {
-            Write-Info "Kurucu aciliyor. Oyun olarak Schedule I'i secip kur,"
-            Write-Info "sonra bu pencereye donup Enter'a bas."
-            Start-Process $bundled | Out-Null
-            Read-Host "      Kurulum bitince Enter" | Out-Null
-            $hasMl = (Test-Path $ml6) -or (Test-Path $ml35)
-            if ($hasMl) { Write-Ok "MelonLoader kuruldu" }
-        }
-    } else {
-        Write-Info "Indirme sayfasi aciliyor: github.com/LavaGang/MelonLoader/releases"
-        Start-Process 'https://github.com/LavaGang/MelonLoader/releases/latest' | Out-Null
-        Write-Info "MelonLoader 0.7.3'u kur, sonra KUR.cmd'yi tekrar calistir."
-    }
-
-    if (-not $hasMl) {
-        Write-Host ""
-        Write-Host "  Kurulum yarida kaldi: once MelonLoader gerekiyor." -ForegroundColor Yellow
+    $mlScript = Join-Path $PSScriptRoot 'install_melonloader.ps1'
+    if (-not (Test-Path $mlScript)) {
+        Write-Bad "Kurulum betigi yok: $mlScript"
         exit 2
     }
+
+    & $mlScript -GameDir $GameDir
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "  Kurulum yarida kaldi: MelonLoader kurulamadi." -ForegroundColor Yellow
+        exit 2
+    }
+
+    $hasMl = (Test-Path $ml6) -or (Test-Path $ml35)
+    if (-not $hasMl) {
+        Write-Bad "MelonLoader kuruldu gorunuyor ama dosyalar bulunamadi."
+        exit 2
+    }
+    Write-Ok "kuruldu"
 }
 
 # IL2CPP mi Mono mu?
@@ -150,13 +151,101 @@ $isMono = (Test-Path $ml35) -and -not (Test-Path $ml6)
 $wantDll = if ($isMono) { 'ScheduleOneTR_Mono.dll' } else { 'ScheduleOneTR_Il2Cpp.dll' }
 Write-Info ("oyun surumu: " + $(if ($isMono) { 'Mono (alternate dal)' } else { 'IL2CPP (ana dal)' }))
 
-# ------------------------------------------------------------ 3. mod DLL
+# --------------------------------------------- 3. ilk acilis / assembly'ler
 
-Write-Step 3 $steps "Mod dosyasi kopyalaniyor"
+Write-Step 3 $steps "Oyun dosyalari hazirlaniyor"
+
+# IL2CPP'de mod, MelonLoader'in urettigi Il2CppAssemblies'e karsi derleniyor.
+# Bu klasor ancak oyun MelonLoader ile BIR KEZ acildiktan sonra olusuyor.
+$asmDir = Join-Path $GameDir 'MelonLoader\Il2CppAssemblies'
+
+function Get-AsmCount {
+    if (-not (Test-Path $asmDir)) { return 0 }
+    return @(Get-ChildItem $asmDir -Filter *.dll -File -ErrorAction SilentlyContinue).Count
+}
+
+if ($isMono) {
+    Write-Ok "Mono dali, bu adim gerekmiyor"
+} elseif ((Get-AsmCount) -gt 20) {
+    Write-Ok "hazir ($(Get-AsmCount) dosya)"
+} else {
+    Write-Info "Oyunun bir kez acilmasi gerekiyor: MelonLoader ilk acilista"
+    Write-Info "yamanin derlenmesi icin gereken dosyalari uretiyor."
+    Write-Info "Bu acilis 5-15 dakika surebilir, siyah ekranda bekle."
+    Write-Host ""
+    Write-Host "      Oyun simdi baslatilsin mi? (E / H): " -NoNewline
+
+    if ((Read-Host).Trim().ToUpperInvariant() -ne 'E') {
+        Write-Host ""
+        Write-Host "  Kurulum yarida kaldi." -ForegroundColor Yellow
+        Write-Info "Oyunu kendin acip ana menuyu gorduktan sonra kapat,"
+        Write-Info "sonra KUR.cmd'yi tekrar calistir."
+        exit 5
+    }
+
+    Start-Process "steam://rungameid/$APPID"
+    Write-Host ""
+    Write-Info "Oyun baslatiliyor. Ana menuyu gorunce oyunu KAPAT."
+    Write-Info "Bu pencere kendiliginden devam edecek, kapatma."
+    Write-Host ""
+
+    # Dosyalar olusana kadar bekle (en fazla 30 dakika)
+    $limit = (Get-Date).AddMinutes(30)
+    $last  = -1
+    while ((Get-Date) -lt $limit) {
+        Start-Sleep -Seconds 5
+        $n = Get-AsmCount
+        if ($n -ne $last) {
+            Write-Host "`r      uretilen dosya: $n   " -NoNewline
+            $last = $n
+        }
+        if ($n -gt 20) {
+            # Sayi artmayi birakinca is bitmis demektir
+            Start-Sleep -Seconds 10
+            if ((Get-AsmCount) -eq $n) { break }
+        }
+    }
+    Write-Host ""
+
+    if ((Get-AsmCount) -le 20) {
+        Write-Host ""
+        Write-Bad "Dosyalar uretilmedi."
+        Write-Info "Oyunu elle acip ana menuyu gor, kapat, sonra KUR.cmd'yi"
+        Write-Info "tekrar calistir."
+        exit 5
+    }
+    Write-Ok "hazir ($(Get-AsmCount) dosya)"
+
+    # Oyun aciksa derleme ve kopyalama sirasinda dosya kilitlenmesin
+    $proc = @(Get-Process -Name 'Schedule I' -ErrorAction SilentlyContinue)
+    if ($proc.Count -gt 0) {
+        Write-Host ""
+        Write-Info "Devam etmek icin oyunu kapat. Bekliyorum..."
+        while (@(Get-Process -Name 'Schedule I' -ErrorAction SilentlyContinue).Count -gt 0) {
+            Start-Sleep -Seconds 3
+        }
+        Write-Ok "oyun kapandi"
+    }
+}
+
+# ------------------------------------------------------------ 4. mod DLL
+
+Write-Step 4 $steps "Mod dosyasi kopyalaniyor"
 
 # DLL iki yerde olabilir: hazir pakette mod\ altinda, depodan
 # calistirildiginda ise derleme ciktisinda.
 $cfg = if ($isMono) { 'Mono' } else { 'IL2CPP' }
+
+# -Force: oyun guncellendi, eski derleme gecersiz olabilir. Kaynak kod
+# varsa onbellegi silip bastan derliyoruz.
+if ($Force -and (Test-Path (Join-Path $here 'src\ScheduleOneTR\ScheduleOneTR.csproj'))) {
+    Write-Info "yeniden derleme istendi, eski ciktilar siliniyor"
+    foreach ($d in @('src\ScheduleOneTR\bin', 'src\ScheduleOneTR\obj')) {
+        $p = Join-Path $here $d
+        if (Test-Path $p) { Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 $srcDll = @(
     (Join-Path $here "mod\$wantDll"),
     (Join-Path $here "src\ScheduleOneTR\bin\$cfg\$wantDll")
@@ -244,7 +333,7 @@ Write-Ok "Mods\$wantDll"
 
 # ------------------------------------------------------- 4. ceviri dosyalari
 
-Write-Step 4 $steps "Ceviri dosyalari kopyalaniyor"
+Write-Step 5 $steps "Ceviri dosyalari kopyalaniyor"
 
 $srcLang = Join-Path $here 'languages\tr'
 if (-not (Test-Path $srcLang)) {
@@ -271,7 +360,7 @@ Write-Info "konum: UserData\ScheduleOneTR\languages\tr"
 
 # ----------------------------------------------------------------- 5. ozet
 
-Write-Step 5 $steps "Hazir"
+Write-Step 6 $steps "Hazir"
 
 Write-Host ""
 Write-Host "  KURULUM TAMAM" -ForegroundColor Green

@@ -14,15 +14,20 @@ kolaylaştırmak için oyunda gördüğü **bütün İngilizce metinleri dosyaya
 ## İçerik
 
 ```
+KUR.cmd / GUNCELLE.cmd           GitHub zip'ini indirenler için kısayollar;
+KALDIR.cmd / EKSIK_METINLER.cmd    release/ altındaki asıl betikleri çağırır
 extract.cmd                      metin çıkarıcı — çift tıkla, kurulum gerektirmez
 merge.cmd                        yeni metinleri çeviriye ekler — aynı şekilde
 build.ps1                        derleme betiği
 release/                         son kullanıcı paketinin şablonları
   KUR.cmd / KALDIR.cmd           kullanıcının tıkladığı dosyalar
+  GUNCELLE.cmd                   oyun güncellendikten sonra baştan derler
   EKSIK_METINLER.cmd             İngilizce kalanları toplar
   OKUBENI.txt                    kullanıcı kılavuzu
 tools/make_release.ps1           derler + kullanıcı zip'ini üretir
 tools/install.ps1                kurulumcunun asıl mantığı
+tools/install_melonloader.ps1    MelonLoader'ı indirip oyuna kurar
+tools/bootstrap_build.ps1        .NET SDK yoksa kurar, sonra derler
 tools/check_translation.ps1      çeviri dosyasını denetler
 languages/tr/00_main.txt         çeviri dosyası şablonu (boş)
 tools/extract_strings.ps1        metin çıkarıcı (PowerShell, bağımlılık yok)
@@ -45,38 +50,77 @@ src/ScheduleOneTR/
 
 ## 0. Son kullanıcıya paket hazırlamak
 
-Test edecek kişinin kod bilgisine ihtiyacı yok, hiçbir şey derlemez. Ona
-**derlenmiş DLL + çeviriler + tek tıklık kurulumcu** içeren bir zip verilir.
+Kullanıcı hiçbir şey kurmaz, indirmez, ayar yapmaz. **Tek tıklama.**
+MelonLoader, .NET SDK, derleme — hepsini `KUR.cmd` kendisi hallediyor.
 
-Paketi, **oyunun ve .NET SDK'nın bulunduğu makinede** hazırla:
+### Kullanıcıya ne veriliyor
+
+İki yol var, ikisi de aynı sonuca çıkıyor:
+
+**GitHub'dan indirterek** (hazırlık gerektirmez) — kullanıcı depo
+sayfasından **Code → Download ZIP** der, açar, kökteki `KUR.cmd`'ye çift
+tıklar. Kökteki `KUR.cmd` / `KALDIR.cmd` / `GUNCELLE.cmd` /
+`EKSIK_METINLER.cmd` bunun için var; `release\` altındaki asıl betiklere
+yönlendiriyorlar.
+
+**Zip hazırlayarak**
 
 ```powershell
-.\tools\make_release.ps1
+.\tools\make_release.ps1             # DLL derleyip paketler
+.\tools\make_release.ps1 -SelfBuild  # oyun olmayan makinede: kaynak kodu paketler
 ```
 
-Derler, `dist\ScheduleOneTR-TR-<tarih>.zip` üretir, içindeki çeviri
-dosyalarını denetler. Mevcut DLL'i kullanmak için `-SkipBuild`, alternate
-dal için `-Mono`. İki dalı da derlersen ikisinin DLL'i birlikte paketlenir
-ve kurulumcu doğru olanı kendisi seçer.
+`dist\ScheduleOneTR-TR-<tarih>.zip` üretir ve çeviri dosyalarını denetler.
+`-SkipBuild` mevcut DLL'i kullanır, `-Mono` alternate dal içindir. İki dalı
+da derlersen ikisinin DLL'i birlikte gider, kurulumcu doğru olanı seçer.
+`-SelfBuild` paketi DLL yerine kaynak kodu taşır; kullanıcının makinesinde
+oyun ve MelonLoader zaten olduğu için derleme orada yapılabiliyor.
 
-Kullanıcının gördüğü:
+### Kullanıcının gördüğü
 
 ```
 KUR.cmd              çift tıkla, kurulum biter
+GUNCELLE.cmd         oyun güncellendikten sonra
 KALDIR.cmd           yamayı kaldırır
 EKSIK_METINLER.cmd   İngilizce kalan yazıları masaüstüne toplar
 OKUBENI.txt          kullanım ve sık sorulanlar
 ```
 
-`KUR.cmd` oyunu Steam kütüphanelerinden kendisi bulur, IL2CPP mi Mono mu
-olduğunu anlar, doğru DLL'i `Mods\`'a ve çevirileri
-`UserData\ScheduleOneTR\languages\tr\`'ye kopyalar. MelonLoader kurulu
-değilse tek onayla devam eder: `release\MelonLoader.Installer.exe`'yi
-pakete koyduysan onu açar, koymadıysan indirme sayfasını açar.
+### `KUR.cmd` altı adımda ne yapıyor
 
-> MelonLoader Apache-2.0 lisanslı, kurucusunu pakete koymak serbest.
-> `release/MelonLoader.Installer.exe` `.gitignore`'da — depoya girmez,
-> paketleme sırasında varsa kullanılır.
+1. **Oyunu bulur** — Steam kayıt defteri, `libraryfolders.vdf`, Program
+   Files. Bulamazsa klasörü pencereye sürüklemesini ister.
+2. **MelonLoader** kurulu değilse `tools\install_melonloader.ps1`
+   `MelonLoader.x64.zip`'i GitHub'dan indirip oyun klasörüne açar — pencere
+   açılmaz, soru sorulmaz. Sürüm `-Version` ile değiştirilebilir.
+3. **İlk açılışı yönetir** — IL2CPP'de mod, MelonLoader'ın ürettiği
+   `Il2CppAssemblies`'e karşı derleniyor; o klasör ancak oyun bir kez
+   açıldıktan sonra oluşuyor. Betik oyunu `steam://rungameid/3164500` ile
+   başlatır, üretilen dosya sayısını izler, sayı sabitlenince devam eder,
+   oyun kapanana kadar bekler.
+4. **Mod yoksa derler** — `tools\bootstrap_build.ps1`. .NET SDK yoksa
+   Microsoft'un resmi `dotnet-install.ps1` betiğiyle SDK 8'i paketin
+   `.dotnet\` klasörüne kurar: yönetici yetkisi istemez, sisteme hiçbir şey
+   yazmaz, kaldırmak için klasörü silmek yeter.
+5. **Çevirileri kopyalar** — `UserData\ScheduleOneTR\languages\tr\`.
+6. **Özet yazar** — kısayollar, sorun çıkarsa ne yapılacağı.
+
+Her adım tekrar çalıştırılabilir: yapılmış olanı atlar.
+
+### Oyun güncellenince
+
+Steam oyunu güncellediğinde MelonLoader'ın ürettiği assembly'ler değişiyor,
+onlara karşı derlenmiş eski DLL uymayabiliyor. Kullanıcı `GUNCELLE.cmd`'ye
+çift tıklar: `install.ps1 -Force` çalışır, `bin\` ve `obj\` silinir, mod
+baştan derlenir. Steam MelonLoader dosyalarını silmişse onlar da yeniden
+kurulur.
+
+Belirti tablosu `OKUBENI.txt`'te: oyun açılmıyor ya da çeviri tamamen
+gittiyse `GUNCELLE.cmd`; sadece bazı yazılar İngilizceyse gerek yok.
+
+> MelonLoader Apache-2.0 lisanslı; indirmek de, kurucusunu pakete koymak da
+> serbest. `release/MelonLoader.Installer.exe` `.gitignore`'da — depoya
+> girmez, paketleme sırasında varsa pakete eklenir.
 
 **Geri bildirim döngüsü.** Mod, karşılığı olmayan metinleri oyun içinde
 kaydediyor (`ExportEnglishStrings` varsayılan olarak açık). Kullanıcı

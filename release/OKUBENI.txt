@@ -4,30 +4,29 @@ Schedule I - Turkce Yama
 Kurulum tek tiklama. Ayar yapman, komut yazman gerekmiyor.
 
 
-ONCE: MELONLOADER
------------------
-
-Bu yama MelonLoader uzerinde calisiyor. Kurulu degilse KUR.cmd sana
-indirme sayfasini acar. Tek seferlik.
-
-    1. MelonLoader 0.7.3'u kur (oyun olarak Schedule I'i sec)
-    2. Oyunu BIR KEZ ac, ana menuyu gor, kapat
-       (bu acilis 5-15 dakika surebilir, takilmadi - MelonLoader
-        kendi dosyalarini uretiyor, sadece ilk seferde oluyor)
-
-
 KURMAK ICIN
 -----------
 
     KUR.cmd  dosyasina cift tikla.
 
-Oyunu kendisi bulur, dosyalari yerine koyar, bitince ne yapacagini yazar.
+Hepsi bu. Hicbir sey indirmen, kurman ya da ayar yapman gerekmiyor;
+MelonLoader dahil her seyi kendisi hallediyor.
 
-Ilk calistirmada "Derlensin mi?" diye sorarsa E yaz, Enter'a bas.
-Yama senin makinene gore hazirlanacak; gerekli her sey otomatik
-iniyor, 5-15 dakika surebilir. Bu sadece bir kere oluyor.
+Sirasiyla sunlari yapacak:
 
-Sonra oyunu Steam'den normal sekilde baslat.
+    1. Oyunu bulur
+    2. MelonLoader yoksa indirip kurar
+    3. Oyunu bir kez baslatir - ANA MENUYU GORUNCE OYUNU KAPAT.
+       Pencere kendiliginden devam eder, kapatma.
+    4. Yamayi senin makinene gore derler
+    5. Dosyalari yerine koyar
+
+Uc soru sorar, hepsine E yazip Enter'a basman yeterli.
+
+Ilk kurulum 15-30 dakika surebilir. Uzun gorunen adimlarda ekranda
+bir sey yazmayabilir; takilmadi, bekle. Bu sadece bir kere oluyor.
+
+Bitince oyunu Steam'den normal sekilde baslat.
 
 
 OYUN ICINDE
@@ -35,6 +34,29 @@ OYUN ICINDE
 
     F10   cevirivi kapatir/acar  - bir yazinin aslini gormek istersen
     F9    ceviri dosyalarini yeniden yukler
+
+
+OYUN GUNCELLENIRSE
+------------------
+
+Steam oyunu guncelledikten sonra:
+
+    GUNCELLE.cmd  dosyasina cift tikla.
+
+Yamayi oyunun yeni surumune gore bastan hazirlar. Bu da 10-20 dakika
+surebilir.
+
+Ne zaman gerekli oldugunu anlamak kolay:
+
+    Oyun aciliyor, yazilar Ingilizce  ->  GUNCELLE.cmd calistir
+    Oyun hic acilmiyor                ->  GUNCELLE.cmd calistir
+    Sadece bazi yazilar Ingilizce     ->  gerek yok, normal
+
+Guncelleme Steam'in MelonLoader dosyalarini silmesine de yol acabilir;
+GUNCELLE.cmd eksikse onlari da yeniden kurar.
+
+Yamanin kendisi yenilendiginde (yeni ceviriler eklendiginde) yeni
+dosyalari indirip KUR.cmd'yi tekrar calistirman yeterli.
 
 
 KALDIRMAK ICIN
@@ -81,8 +103,9 @@ Oyun hic acilmiyor.
     KALDIR.cmd calistir, oyun eski haline doner. Sonra haber ver.
 
 Oyun guncellenince ne olur?
-    Yama cokmez, degisen yazilar Ingilizce kalir. Yeni surum cikana
-    kadar oyle gorunur.
+    Cogu zaman bir sey olmaz, sadece degisen yazilar Ingilizce kalir.
+    Oyun hic acilmazsa ya da ceviri tamamen gidirse GUNCELLE.cmd'yi
+    calistir (yukarida anlatildi).
 
 
 Virus uyarisi alirsam?

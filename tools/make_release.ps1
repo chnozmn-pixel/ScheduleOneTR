@@ -91,7 +91,7 @@ New-Item -ItemType Directory -Path (Join-Path $pkg 'mod')          -Force | Out-
 New-Item -ItemType Directory -Path (Join-Path $pkg 'languages\tr') -Force | Out-Null
 
 # kullaniciya gorunen dosyalar
-foreach ($f in @('KUR.cmd','KALDIR.cmd','EKSIK_METINLER.cmd','OKUBENI.txt')) {
+foreach ($f in @('KUR.cmd','KALDIR.cmd','GUNCELLE.cmd','EKSIK_METINLER.cmd','OKUBENI.txt')) {
     $src = Join-Path $repo "release\$f"
     if (-not (Test-Path $src)) { Write-Host "  eksik: release\$f" -ForegroundColor Red; exit 3 }
     Copy-Item $src $pkg -Force
@@ -101,6 +101,8 @@ foreach ($f in @('KUR.cmd','KALDIR.cmd','EKSIK_METINLER.cmd','OKUBENI.txt')) {
 Copy-Item (Join-Path $repo 'tools\install.ps1')                 (Join-Path $pkg 'tools') -Force
 Copy-Item (Join-Path $repo 'tools\_common.ps1')                 (Join-Path $pkg 'tools') -Force
 Copy-Item (Join-Path $repo 'release\tools\collect_missing.ps1')  (Join-Path $pkg 'tools') -Force
+# MelonLoader kurucusu her pakette lazim: kullanicida kurulu olmayabilir
+Copy-Item (Join-Path $repo 'tools\install_melonloader.ps1')      (Join-Path $pkg 'tools') -Force
 
 # Kaynak kodlu pakette derleme icin gerekenler de gidiyor.
 if ($SelfBuild) {
@@ -144,15 +146,16 @@ if (Test-Path $mlInst) {
     Copy-Item $mlInst $pkg -Force
     Write-Host "        MelonLoader kurucusu da eklendi" -ForegroundColor Green
 } else {
-    Write-Host "        MelonLoader kurucusu yok (kullaniciya indirme sayfasi acilacak)"
+    Write-Host "        MelonLoader: kurulumcu gerektiginde GitHub'dan indirecek"
 }
 
 # ------------------------------------------------------------- denetim
 
 Write-Host "  [3/4] Paket denetleniyor" -ForegroundColor Cyan
 
-$must = @('KUR.cmd','KALDIR.cmd','EKSIK_METINLER.cmd','OKUBENI.txt',
-          'tools\install.ps1','tools\_common.ps1','tools\collect_missing.ps1')
+$must = @('KUR.cmd','KALDIR.cmd','GUNCELLE.cmd','EKSIK_METINLER.cmd','OKUBENI.txt',
+          'tools\install.ps1','tools\_common.ps1','tools\collect_missing.ps1',
+          'tools\install_melonloader.ps1')
 if ($haveDll)   { $must += "mod\$dllName" }
 if ($SelfBuild) { $must += @('build.ps1','tools\bootstrap_build.ps1',
                              'src\ScheduleOneTR\ScheduleOneTR.csproj',
