@@ -1,0 +1,27 @@
+// Schedule I - Türkçe
+//
+// Bu dosya BOŞ başlar. Çeviri metinlerini sen dolduracaksın.
+//
+// Nasıl dolduracağın:
+//   1. Modu kur, oyunu oyna (menüler, telefon, görevler, dükkânlar...).
+//   2. Oyundan çık. Mod şunu üretir:
+//        UserData/ScheduleOneTR/export/english_strings.txt
+//      Bu dosya, oyunda gördüğü her İngilizce metni "metin=" biçiminde listeler.
+//   3. Eşittirin sağını doldur, dosyayı bu klasöre kopyala.
+//   4. Oyun içinde F9 ile yeniden yükle, anında gör.
+//
+// Biçim:
+//   Continue=Devam et                  birebir metin
+//   Day {0}=Gün {0}                    {0} {1} sayıların yerini tutar, aynen koru
+//   <b>Cash</b>=<b>Nakit</b>           <b> <color=...> gibi etiketleri aynen koru
+//   r:"^Sold (.+) to (.+)$"=$2 kişisine $1 satıldı      regex kuralı
+//
+// Kaçışlar:  \n satır sonu   \t sekme   \\ ters bölü   \= anahtar içindeki eşittir
+// Değeri boş bırakılan satır çevrilmemiş sayılır, oyunda İngilizce kalır.
+//
+// Bu klasördeki tüm .txt dosyaları ad sırasıyla okunup birleştirilir; dosyayı
+// bölmek istersen 10_telefon.txt, 20_gorevler.txt gibi adlar verebilirsin.
+// Aynı anahtar iki kez geçerse sonradan okunan kazanır.
+
+@name=Türkçe
+@english=Turkish

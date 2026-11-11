@@ -1,0 +1,7 @@
+bin/
+obj/
+*.user
+Directory.Build.props
+export/
+__pycache__/
+extracted/
