@@ -14,10 +14,15 @@ kolaylaştırmak için oyunda gördüğü **bütün İngilizce metinleri dosyaya
 ## İçerik
 
 ```
+extract.cmd                      metin çıkarıcı — çift tıkla, kurulum gerektirmez
+merge.cmd                        yeni metinleri çeviriye ekler — aynı şekilde
 build.ps1                        derleme betiği
 languages/tr/00_main.txt         çeviri dosyası şablonu (boş)
-tools/extract_strings.py         oyun dosyalarından tüm İngilizce metinleri çıkarır
-tools/merge_export.py            yeni metinleri mevcut çeviriyle birleştirir
+tools/extract_strings.ps1        metin çıkarıcı (PowerShell, bağımlılık yok)
+tools/extract_strings.py         aynısı + UnityPy ile asset taraması (Python)
+tools/merge_export.ps1           birleştirici (PowerShell, bağımlılık yok)
+tools/merge_export.py            aynısı (Python)
+tools/_common.ps1                Steam kütüphanelerinden oyunu bulan yardımcı
 src/ScheduleOneTR/
   ScheduleOneTR.csproj           IL2CPP + Mono yapılandırmaları
   Plugin.cs                      MelonMod girişi, ayarlar, sahne tarayıcı
@@ -54,12 +59,16 @@ cd ScheduleOneTR
 
 Gerekenler:
 
-| | Ne için |
-|---|---|
-| .NET SDK 8 | modu derlemek |
-| MelonLoader 0.7.3 | modu çalıştırmak |
-| Python 3.9+ | `tools/` altındaki betikler |
-| UnityPy (isteğe bağlı) | `pip install UnityPy` — sadece asset taraması için |
+| | Ne için | Zorunlu mu |
+|---|---|---|
+| .NET SDK 8 | modu derlemek | modu derleyeceksen |
+| MelonLoader 0.7.3 | modu çalıştırmak | oyunda denemek için |
+| Python 3.9+ | `tools/*.py` betikleri | **hayır** — aşağıya bak |
+| UnityPy | `pip install UnityPy`, sadece asset taraması | hayır |
+
+**Sadece metin çıkarmak/çevirmek istiyorsan hiçbir şey kurmana gerek yok.**
+Depo kökündeki `extract.cmd`'ye çift tıkla — Windows'ta hazır gelen PowerShell'le
+çalışır, oyun klasörünü Steam kütüphanelerinden kendisi bulur. Ayrıntı: [§3a](#a-oyun-dosyalarından-çıkar-oynamadan-tek-seferde).
 
 `Directory.Build.props` depoya dahil değil (her makinede oyun yolu farklı).
 `src/ScheduleOneTR/Directory.Build.props.example`'ı kopyalayıp yolu düzelt,
@@ -99,17 +108,44 @@ Metinleri elde etmenin iki yolu var. **Birincisi asıl yöntem**, ikincisi onu t
 
 ### a) Oyun dosyalarından çıkar (oynamadan, tek seferde)
 
+İki eşdeğer betik var; **ikisi de aynı dosyaları üretir** (çıktıları birebir aynı).
+Hangisini kullanacağın makinede ne kurulu olduğuna bağlı:
+
+**1. Kurulum gerektirmeyen yol (önerilen).** Windows'ta hazır gelen PowerShell 5.1
+ve .NET Framework yeter: Python yok, pip yok, UnityPy yok.
+
+```powershell
+.\extract.cmd
+```
+
+Çift tıklamak da olur. Oyun klasörünü Steam kütüphanelerinden (başka disklerdeki
+kütüphaneler dahil) kendisi bulur; bulamazsa yolu sen verirsin:
+
+```powershell
+.\extract.cmd -GameDir "C:\...\steamapps\common\Schedule I"
+```
+
+Betiğin kendisi `tools/extract_strings.ps1`; doğrudan da çağırabilirsin
+(`extract.cmd` sadece execution policy'yi aşıp `-Raw` ekleyen bir sarmalayıcı).
+
+**2. Python yolu.** Aynı iş, artı UnityPy ile asset taraması:
+
 ```bash
 python tools/extract_strings.py --game "C:\...\steamapps\common\Schedule I" --raw
 ```
 
-Oyunu hiç açmadan bütün metin sabitlerini toplar. Üç kaynağa bakar:
+PowerShell sürümünde asset taraması **yok** — IL2CPP'de type tree bulunmadığı için
+o adım zaten neredeyse hep boş dönüyordu. Mono dalında asset'lerden de metin
+toplamak istersen Python sürümünü kullan.
+
+Her iki betik de oyunu hiç açmadan bütün metin sabitlerini toplar ve oyun
+dosyalarına **dokunmaz, yalnızca okur**. Kaynaklar:
 
 | Kaynak | Dosya | Not |
 |---|---|---|
 | IL2CPP string literal tablosu | `Schedule I_Data\il2cpp_data\Metadata\global-metadata.dat` | Ana dal. Ek kurulum gerektirmez. |
 | Mono `#US` heap | `Schedule I_Data\Managed\Assembly-CSharp.dll` | `alternate` dalı. Ek kurulum gerektirmez. |
-| TMP bileşen metinleri | `*.assets`, `level*`, bundle'lar | `pip install UnityPy` gerekir. IL2CPP'de type tree olmadığı için genelde boş döner; `--no-assets` ile atla. |
+| TMP bileşen metinleri | `*.assets`, `level*`, bundle'lar | **Sadece Python sürümünde**, `pip install UnityPy` gerekir. IL2CPP'de type tree olmadığı için genelde boş döner; `--no-assets` ile atla. |
 
 Çıktılar `extracted/` altında:
 
@@ -183,6 +219,16 @@ Oyun içinde:
 ### e) Yeni metinleri ekle
 
 Oyunu oynadıkça yeni metinler çıkar. Elle kopyalamak yerine:
+
+```powershell
+.\merge.cmd
+```
+
+Kurulum gerektirmez; `export\english_strings.txt`'i oyun klasöründen, çeviri
+dosyasını da depodaki `languages\tr\00_main.txt`'ten kendisi bulur. Önce ne
+olacağını görmek için `.\merge.cmd -DryRun`.
+
+Python sürümü de aynı işi yapar (çıktısı birebir aynı):
 
 ```bash
 python tools/merge_export.py --export "...\export\english_strings.txt" --current "...\languages\tr\00_main.txt"

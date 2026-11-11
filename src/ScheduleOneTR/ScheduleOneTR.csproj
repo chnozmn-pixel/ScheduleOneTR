@@ -86,10 +86,16 @@
 
   <!-- Derleme sonrası otomatik kurulum: -p:DeployToGame=true -->
   <Target Name="DeployToGame" AfterTargets="Build" Condition="'$(DeployToGame)' == 'true'">
+    <ItemGroup>
+      <!-- languages/<klasor>/*.txt -> UserData\ScheduleOneTR\languages\<klasor>\ -->
+      <_LangFiles Include="$(MSBuildThisFileDirectory)..\..\languages\**\*.txt" />
+    </ItemGroup>
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\Mods" />
-    <Copy SourceFiles="$(MSBuildThisFileDirectory)..\..\languages\tr.txt"
-          DestinationFolder="$(GameDir)\UserData\ScheduleOneTR\languages" />
+    <Copy SourceFiles="@(_LangFiles)"
+          DestinationFiles="@(_LangFiles->'$(GameDir)\UserData\ScheduleOneTR\languages\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
     <Message Importance="high" Text="Kuruldu -> $(GameDir)\Mods\$(TargetFileName)" />
+    <Message Importance="high" Text="Dil dosyasi: @(_LangFiles->Count()) adet -> $(GameDir)\UserData\ScheduleOneTR\languages\" />
   </Target>
 
 </Project>
