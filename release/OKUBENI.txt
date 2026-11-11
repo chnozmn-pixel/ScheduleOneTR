@@ -1,0 +1,114 @@
+Schedule I - Turkce Yama
+========================
+
+Kurulum tek tiklama. Ayar yapman, komut yazman gerekmiyor.
+
+
+KURMAK ICIN
+-----------
+
+    KUR.cmd  dosyasina cift tikla.
+
+Hepsi bu. Hicbir sey indirmen, kurman ya da ayar yapman gerekmiyor;
+MelonLoader dahil her seyi kendisi hallediyor.
+
+Sirasiyla sunlari yapacak:
+
+    1. Oyunu bulur
+    2. MelonLoader yoksa indirip kurar
+    3. Oyunu bir kez baslatir - ANA MENUYU GORUNCE OYUNU KAPAT.
+       Pencere kendiliginden devam eder, kapatma.
+    4. Yamayi senin makinene gore derler
+    5. Dosyalari yerine koyar
+
+Uc soru sorar, hepsine E yazip Enter'a basman yeterli.
+
+Ilk kurulum 15-30 dakika surebilir. Uzun gorunen adimlarda ekranda
+bir sey yazmayabilir; takilmadi, bekle. Bu sadece bir kere oluyor.
+
+Bitince oyunu Steam'den normal sekilde baslat.
+
+
+OYUN ICINDE
+-----------
+
+    F10   cevirivi kapatir/acar  - bir yazinin aslini gormek istersen
+    F9    ceviri dosyalarini yeniden yukler
+
+
+OYUN GUNCELLENIRSE
+------------------
+
+Steam oyunu guncelledikten sonra:
+
+    GUNCELLE.cmd  dosyasina cift tikla.
+
+Yamayi oyunun yeni surumune gore bastan hazirlar. Bu da 10-20 dakika
+surebilir.
+
+Ne zaman gerekli oldugunu anlamak kolay:
+
+    Oyun aciliyor, yazilar Ingilizce  ->  GUNCELLE.cmd calistir
+    Oyun hic acilmiyor                ->  GUNCELLE.cmd calistir
+    Sadece bazi yazilar Ingilizce     ->  gerek yok, normal
+
+Guncelleme Steam'in MelonLoader dosyalarini silmesine de yol acabilir;
+GUNCELLE.cmd eksikse onlari da yeniden kurar.
+
+Yamanin kendisi yenilendiginde (yeni ceviriler eklendiginde) yeni
+dosyalari indirip KUR.cmd'yi tekrar calistirman yeterli.
+
+
+KALDIRMAK ICIN
+--------------
+
+    KALDIR.cmd  dosyasina cift tikla.
+
+Oyun tekrar Ingilizce acilir. Kayitli oyunlarina dokunmaz.
+
+
+YARDIM EDEBILIRSIN
+------------------
+
+Mod, oyunda Ingilizce kalan her yaziyi kendi kaydediyor. Bir sure
+oynadiktan sonra:
+
+    EKSIK_METINLER.cmd  dosyasina cift tikla.
+
+Masaustune bir dosya koyar. Onu gonderirsen o yazilar da cevrilir.
+Ne kadar cok ekran gezersen (menuler, telefon, gorevler, dukkanlar)
+o kadar isimize yarar.
+
+
+SIK SORULANLAR
+--------------
+
+Kayitli oyunlarim bozulur mu?
+    Hayir. Yama sadece ekranda gorunen yaziyi degistiriyor; oyunun
+    kendi verisine dokunmuyor. Kayitlar ve coklu oyuncu Ingilizce
+    metinle calismaya devam ediyor.
+
+Coklu oyuncuda sorun olur mu?
+    Olmaz. Karsi taraf kendi dilinde gorur.
+
+Bazi yazilar hala Ingilizce.
+    Normal, hepsi henuz cevrilmedi. EKSIK_METINLER.cmd ile toplayip
+    gonderirsen sonraki surumde girer.
+
+Harfler kare kare / bos kutu cikiyor.
+    Font sorunu, haber ver. Oyunun yazi tipinde Turkce harf yoksa mod
+    yedek font devreye sokuyor ama her ekranda tutmayabilir.
+
+Oyun hic acilmiyor.
+    KALDIR.cmd calistir, oyun eski haline doner. Sonra haber ver.
+
+Oyun guncellenince ne olur?
+    Cogu zaman bir sey olmaz, sadece degisen yazilar Ingilizce kalir.
+    Oyun hic acilmazsa ya da ceviri tamamen gidirse GUNCELLE.cmd'yi
+    calistir (yukarida anlatildi).
+
+
+Virus uyarisi alirsam?
+    MelonLoader ve mod dosyalari imzali olmadigi icin Windows ya da
+    antivirus uyarabilir. Dosyalarin kaynagi:
+    github.com/chnozmn-pixel/ScheduleOneTR

@@ -1,276 +1,305 @@
-# Schedule I — Türkçe Çeviri Yaması (MelonLoader modu)
+# Schedule I — Türkçe Yama
 
-Steam AppID **3164500**, test edilen sürüm **v0.4.7**.
+**Schedule I** oyununu Türkçeye çeviren bir yama. Menüler, görevler, telefon,
+dükkânlar, uyarılar — oyunda yazan her şey Türkçe görünür.
 
-Mod oyunun metinlerini **çizilmeden hemen önce** yakalar ve senin yazdığın karşılıkla
-değiştirir. Oyunun kendi veri modeline dokunmaz: kayıt dosyaları, çok oyunculu
-senkronizasyon ve oyun mantığı İngilizce metinle çalışmaya devam eder.
+Yaklaşık **9.700 satır** çeviri var. Oyunun kendi dosyalarına dokunmaz,
+kayıtlarını bozmaz, çok oyuncuda sorun çıkarmaz.
 
-Çeviri metinlerinin kendisi bu depoda **yok** — onları sen yazacaksın. Mod, bu işi
-kolaylaştırmak için oyunda gördüğü **bütün İngilizce metinleri dosyaya döker**.
-
----
-
-## İçerik
-
-```
-build.ps1                        derleme betiği
-languages/tr/00_main.txt         çeviri dosyası şablonu (boş)
-tools/extract_strings.py         oyun dosyalarından tüm İngilizce metinleri çıkarır
-tools/merge_export.py            yeni metinleri mevcut çeviriyle birleştirir
-src/ScheduleOneTR/
-  ScheduleOneTR.csproj           IL2CPP + Mono yapılandırmaları
-  Plugin.cs                      MelonMod girişi, ayarlar, sahne tarayıcı
-  TmpHooks.cs                    TMP_Text.text ve SetText(...) Harmony yamaları
-  Translator.cs                  eşleştirme motoru (birebir / şablon / etiket / regex)
-  LanguageFile.cs                dil dosyası ayrıştırıcı
-  StringDump.cs                  İngilizce metin dökümü
-  FontFallback.cs                ğ ş ı İ için yedek font
-  GlobalUsings.cs                IL2CPP / Mono tip takma adları
-```
+> Hiç kod bilmeyen biri için yazıldı. Aşağıdaki adımlardan birini uygula, yeter.
 
 ---
 
-## 1. Kurulum (test makinesinde)
+## Kurulum
 
-1. **MelonLoader 0.7.3**'ü oyuna kur. 0.7.1 desteklenmiyor.
-2. Oyunu **bir kez** başlat ve ana menüyü gör, sonra çık.
-   IL2CPP'de bu ilk açılış, derleme için gereken assembly'leri üretir
-   (`Schedule I\MelonLoader\Il2CppAssemblies`) ve birkaç dakika sürebilir.
-3. Derlenmiş DLL'i `Schedule I\Mods\` içine koy.
+Üç yol var. **Hepsi aynı sonuca çıkar**, kolaydan zora sıralı.
 
-> Steam'in **ana dalı IL2CPP**'dir → `ScheduleOneTR_Il2Cpp.dll`.
-> `alternate` dalını kullanıyorsan Mono'dur → `ScheduleOneTR_Mono.dll`.
-> İkisinden yalnızca birini koy.
+### Yol 1 — Tek satır (en kolay)
+
+Başlat menüsüne **PowerShell** yazıp aç. Siyah pencereye şunu yapıştır ve
+Enter'a bas:
+
+```powershell
+irm https://raw.githubusercontent.com/chnozmn-pixel/ScheduleOneTR/main/kur.ps1 | iex
+```
+
+Yapıştırmak için: metni kopyala, pencereye **sağ tıkla**. Ctrl+V de çalışır.
+
+Gerisini kendisi yapar. Birkaç kez `E` yazıp Enter'a basman istenecek, bir de
+oyun açıldığında ana menüyü görünce oyunu kapatman gerekecek. Hepsi bu.
+
+### Yol 2 — Zip indir
+
+1. Bu sayfanın üstündeki yeşil **Code** düğmesi → **Download ZIP**
+2. İnen dosyaya **sağ tık → Tümünü ayıkla**
+3. Açılan klasördeki **`KUR.cmd`** dosyasına çift tıkla
+
+> Zip'in **içinden** çift tıklama. Windows o zaman dosyaları geçici bir yere
+> açıyor ve kurulum yarıda kalıyor. Önce ayıkla, sonra tıkla.
+
+### Yol 3 — Elle (adım adım kendim yapmak istiyorum)
+
+Aşağıda **[Elle kurulum](#elle-kurulum)** başlığında anlatıldı.
 
 ---
 
-## 1b. Başka bir makinede çalışmaya başlamak
+## Kurulum sırasında ne oluyor
 
-```bash
-git clone https://github.com/chnozmn-pixel/ScheduleOneTR.git
-cd ScheduleOneTR
+Pencere altı adımı sırayla yazar. Her adımda ne yaptığını gösterir, bir şey
+gizlemez.
+
+| Adım | Ne yapıyor | Ne kadar sürer |
+|---|---|---|
+| 1 | Oyunu bilgisayarda bulur | saniyeler |
+| 2 | **MelonLoader**'ı indirip kurar | 1–2 dakika |
+| 3 | Oyunu bir kez açar, gerekli dosyaları ürettirir | 5–15 dakika |
+| 4 | Yamayı senin bilgisayarına göre hazırlar | 5–15 dakika |
+| 5 | Çeviri dosyalarını yerine koyar | saniyeler |
+| 6 | Özet yazar | — |
+
+**İlk kurulum 15–30 dakika sürebilir.** Uzun görünen adımlarda ekranda bir
+süre yeni satır çıkmayabilir; takılmadı, çalışıyor. 3. adımda altmış saniyede
+bir şöyle bir satır düşer:
+
+```
+        2:30 gecti | uretilen dosya:   847 | oyun: acik
 ```
 
-Gerekenler:
+Bu satır ilerlediğini gösterir. İkinci kez çalıştırırsan saniyeler sürer,
+çünkü yapılmış olanı atlar.
 
-| | Ne için |
+### Sana düşen iki şey
+
+1. **"(E / H):" diye sorduğunda** `E` yazıp Enter'a bas.
+2. **3. adımda oyun kendiliğinden açılır.** Ana menüyü görünce **oyunu kapat**.
+   Siyah pencereyi kapatma, o kendiliğinden devam eder.
+
+Bitince `KURULUM TAMAM` yazar. Oyunu Steam'den normal şekilde başlat.
+
+---
+
+## Oyun içinde
+
+| Tuş | Ne yapar |
 |---|---|
-| .NET SDK 8 | modu derlemek |
-| MelonLoader 0.7.3 | modu çalıştırmak |
-| Python 3.9+ | `tools/` altındaki betikler |
-| UnityPy (isteğe bağlı) | `pip install UnityPy` — sadece asset taraması için |
+| **F10** | Çeviriyi kapatır/açar — bir yazının aslını merak edersen |
+| **F9** | Çeviri dosyalarını yeniden yükler (oyunu kapatmadan) |
 
-`Directory.Build.props` depoya dahil değil (her makinede oyun yolu farklı).
-`src/ScheduleOneTR/Directory.Build.props.example`'ı kopyalayıp yolu düzelt,
-ya da her derlemede `-GameDir` ver.
+---
 
-Çeviri dosyasını iki makine arasında senkron tutmanın en kolay yolu onu depoda
-tutmak: `languages/tr/` altındaki dosyaları commit'le, diğer makinede `git pull`.
+## Oyun güncellenirse
 
-## 2. Derleme
+Steam oyunu güncellediğinde yamanın bir kısmı eskiyebilir. Belirtiye göre:
 
-.NET SDK 8 gerekir (IL2CPP hedefi net6.0, Mono hedefi net472).
+| Ne görüyorsun | Ne yapmalı |
+|---|---|
+| Oyun açılıyor, **her şey** İngilizce | `GUNCELLE.cmd` çalıştır |
+| Oyun **hiç açılmıyor** | `GUNCELLE.cmd` çalıştır |
+| **Bazı** yazılar İngilizce | Bir şey yapma, normal — hepsi henüz çevrilmedi |
+
+`GUNCELLE.cmd` kurulum klasörünün içinde. Tek satırla kurduysan burada:
+
+```
+%LOCALAPPDATA%\ScheduleOneTR
+```
+
+Bu yolu kopyalayıp Dosya Gezgini'nin adres çubuğuna yapıştırabilirsin.
+Tek satırlık komutu tekrar çalıştırmak da aynı işi görür.
+
+---
+
+## Kaldırmak
+
+Kurulum klasöründeki **`KALDIR.cmd`** dosyasına çift tıkla. Oyun eski haline
+döner. **Kayıtlı oyunlarına dokunmaz.**
+
+---
+
+## Yardım edebilirsin
+
+Yama, oyunda İngilizce kalan her yazıyı kendi kaydediyor. Bir süre
+oynadıktan sonra **`EKSIK_METINLER.cmd`**'ye çift tıkla — masaüstüne bir
+dosya koyar. Onu gönderirsen o yazılar da çevrilir.
+
+Ne kadar çok ekran gezersen (menüler, telefon, görevler, dükkânlar, uyarılar)
+o kadar işe yarar.
+
+---
+
+## Sorun giderme
+
+**Önce şunu bil:** kurulum klasöründe `kurulum-log.txt` diye bir dosya oluşur.
+Ekranda yazan her şey orada da durur. Sorun çıkarsa ekran görüntüsü yerine
+**o dosyayı gönder**, çok daha hızlı çözülür.
+
+| Sorun | Çözüm |
+|---|---|
+| Windows "bilgisayarınız korundu" diyor | **Daha fazla bilgi → Yine de çalıştır**. Dosyalar imzalı olmadığı için çıkar, normal |
+| Antivirüs uyarıyor | Aynı sebep. Kaynak bu depo; istersen kodun tamamını okuyabilirsin |
+| "Schedule I kurulumu bulunamadı" | Oyun klasörünü pencereye sürükleyip Enter'a bas |
+| Oyun açılmıyor | `KALDIR.cmd` çalıştır, oyun eski haline döner. Sonra haber ver |
+| Harfler kare kare / boş kutu | Font sorunu, haber ver. `ğ ş ı İ` harfleri etkilenir |
+| Bazı yazılar İngilizce | Normal, hepsi henüz çevrilmedi. `EKSIK_METINLER.cmd` ile topla |
+| Kurulum "takıldı" gibi | 3. ve 4. adım uzun sürer. Altmış saniyede bir satır düşüyorsa çalışıyordur |
+| "Erişim engellendi" / yazılamıyor | `KUR.cmd`'ye sağ tık → **Yönetici olarak çalıştır** |
+
+### Sık sorulanlar
+
+**Kayıtlı oyunlarım bozulur mu?**
+Hayır. Yama sadece ekranda görünen yazıyı değiştiriyor; oyunun kendi verisine
+dokunmuyor. Kayıtlar İngilizce metinle çalışmaya devam ediyor.
+
+**Çok oyuncuda sorun olur mu?**
+Olmaz. Karşı taraf kendi dilinde görür, gönderilen veri İngilizce kalır.
+
+**Oyunu banlar mı?**
+Schedule I tek oyunculu ağırlıklı bir oyun, anti-cheat kullanmıyor. Yama
+oyunun dosyalarını da değiştirmiyor.
+
+**İnternet gerekiyor mu?**
+Sadece kurulum sırasında (MelonLoader ve derleme araçları iniyor). Sonrasında
+gerekmiyor.
+
+---
+
+## Elle kurulum
+
+Otomatik kurulumu istemiyorsan ya da bir adımda takıldıysan, aynı işi elle
+yapabilirsin.
+
+### 1. MelonLoader
+
+1. [MelonLoader 0.7.3](https://github.com/LavaGang/MelonLoader/releases/tag/v0.7.3)
+   sayfasından **`MelonLoader.x64.zip`** indir.
+2. Zip'in içindekileri **oyun klasörüne** ayıkla. Oyun klasörü genelde burası:
+
+   ```
+   C:\Program Files (x86)\Steam\steamapps\common\Schedule I
+   ```
+
+   Bulamıyorsan: Steam'de oyuna sağ tık → **Yönet → Yerel dosyalara gözat**.
+
+3. Doğru yaptıysan oyun klasöründe `MelonLoader\` klasörü ve `version.dll`
+   dosyası oluşur.
+
+> `MelonLoader.Installer.exe` de kullanabilirsin; aynı işi yapar, oyunu
+> listeden seçip Install dersin.
+
+### 2. Oyunu bir kez aç
+
+Steam'den başlat, **ana menüyü gör**, kapat.
+
+Bu açılış 5–15 dakika sürebilir. MelonLoader bu sırada
+`MelonLoader\Il2CppAssemblies\` klasörünü üretiyor — bir sonraki adım buna
+ihtiyaç duyuyor. Sadece bir kere oluyor.
+
+### 3. Yamayı derle
+
+Bu adım için **.NET SDK 8** gerekiyor
+([indirme sayfası](https://dotnet.microsoft.com/download/dotnet/8.0)).
+Kurmak istemiyorsan `tools\bootstrap_build.ps1` betiği SDK'yı kendi klasörüne
+indirip kullanıyor, sisteme bulaşmıyor.
+
+Depo klasöründe PowerShell aç:
 
 ```powershell
 .\build.ps1 -GameDir "C:\Program Files (x86)\Steam\steamapps\common\Schedule I"
 ```
 
-Mono dalı ve doğrudan kurulum için:
+İlk derleme 5–15 dakika sürer (oyunun binlerce dosyası taranıyor). Sonunda
+şu dosya oluşur:
 
-```powershell
-.\build.ps1 -GameDir "C:\...\Schedule I" -Mono -Deploy
+```
+src\ScheduleOneTR\bin\IL2CPP\ScheduleOneTR_Il2Cpp.dll
 ```
 
-Yolu her seferinde yazmamak için `src/ScheduleOneTR/Directory.Build.props.example`
-dosyasını `Directory.Build.props` adıyla kopyala ve içindeki yolu düzelt.
+Steam'in **alternate** dalını kullanıyorsan `-Mono` ekle; çıktı
+`ScheduleOneTR_Mono.dll` olur.
 
-`csproj` referansları **joker ile** alır (`Il2CppAssemblies\*.dll`). Nedeni:
-MelonLoader'ın ürettiği assembly adları sürümden sürüme değişiyor
-(`Il2CppTMPro` / `Il2CppUnity.TextMeshPro` gibi). Derleme `TMP_Text` tipini
-bulamazsa `GlobalUsings.cs` içindeki namespace'i, `Il2CppAssemblies` klasöründeki
-gerçek DLL adına göre düzelt.
+### 4. Dosyaları yerine koy
 
----
+İki şeyi kopyala:
 
-## 3. Çeviri iş akışı
-
-Metinleri elde etmenin iki yolu var. **Birincisi asıl yöntem**, ikincisi onu tamamlar.
-
-### a) Oyun dosyalarından çıkar (oynamadan, tek seferde)
-
-```bash
-python tools/extract_strings.py --game "C:\...\steamapps\common\Schedule I" --raw
-```
-
-Oyunu hiç açmadan bütün metin sabitlerini toplar. Üç kaynağa bakar:
-
-| Kaynak | Dosya | Not |
-|---|---|---|
-| IL2CPP string literal tablosu | `Schedule I_Data\il2cpp_data\Metadata\global-metadata.dat` | Ana dal. Ek kurulum gerektirmez. |
-| Mono `#US` heap | `Schedule I_Data\Managed\Assembly-CSharp.dll` | `alternate` dalı. Ek kurulum gerektirmez. |
-| TMP bileşen metinleri | `*.assets`, `level*`, bundle'lar | `pip install UnityPy` gerekir. IL2CPP'de type tree olmadığı için genelde boş döner; `--no-assets` ile atla. |
-
-Çıktılar `extracted/` altında:
-
-- `english_strings.txt` — `SIRANO|metin=` biçimi, doğrudan çeviri klasörüne kopyalanabilir
-- `english_strings.csv` — `id,source,translation`, Excel / CAT aracı için
-- `all_strings.txt` — `--raw` ile: filtrelenmemiş ham liste
-
-Filtre kod kokulu metinleri eler: `UnityEngine.*`, camelCase tanıtıcılar, dosya yolları,
-GUID'ler, hex, salt sayılar, sabit adları. Bir şeyin kaybolduğundan şüphelenirsen
-`all_strings.txt`'e bak.
-
-**Bu yöntemin sınırı:** metin sabitlerinin hepsi ekranda görünmez (hata mesajları, log
-satırları, kullanılmayan kod da listeye girer) ve ekranda görünen her şey de sabit
-değildir (bazı metinler çalışma anında birleştirilir). Yani liste hem biraz fazla, hem
-biraz eksik olur. Fazlalığı çevirmesen bir şey olmaz; eksiği (b) kapatır.
-
-### b) Oyundan topla (çalışma anında, doğrulama için)
-
-Mod varsayılan olarak döküm modunda açılır. Oyunu oyna — menüler, telefon, görevler,
-dükkânlar, diyaloglar, ne kadar çok ekran gezersen o kadar çok metin toplanır.
-
-Çıktılar `Schedule I\UserData\ScheduleOneTR\export\` altında, 15 saniyede bir ve
-oyun kapanırken yazılır:
-
-| Dosya | Ne için |
+| Ne | Nereye |
 |---|---|
-| `english_strings.txt` | `metin=` biçimi. Doğrudan doldurup çeviri klasörüne kopyalanır. |
-| `english_strings.csv` | `source,translation` sütunlu CSV. Excel / CAT aracı kullanacaksan. |
+| `ScheduleOneTR_Il2Cpp.dll` | `<oyun>\Mods\` |
+| `languages\tr\*.txt` (3 dosya) | `<oyun>\UserData\ScheduleOneTR\languages\tr\` |
 
-Döküm sırasında gürültü ayıklanır: salt sayılar, saat, para, yüzde, dosya yolları,
-renk kodları ve içinde hiç harf olmayan metinler listeye girmez. Sayılar otomatik
-olarak `{0}` yapılır — yani `Day 5` ve `Day 6` tek satır olur: `Day {0}=`.
+Klasörler yoksa kendin oluştur. Oyunu başlat, menüler Türkçe gelmeli.
 
-### c) Çevir
+### Elle kaldırmak
 
-`english_strings.txt`'i aç, eşittirin **sağını** doldur. Sol taraf anahtardır,
-değiştirirsen eşleşme bozulur.
-
-```
-00001|Continue=Devam et
-00002|Day {0}=Gün {0}
-00003|<b>Cash</b>=<b>Nakit</b>
-00004|r:"^Sold (.+) to (.+)$"=$2 kişisine $1 satıldı
-```
-
-Baştaki `00001|` sıra numarası **senin takibin için**; mod okurken atar, eşleştirmede
-kullanılmaz. İstersen hiç yazmazsın. Kalıcı kimlik numara değil **anahtarın kendisidir**
-— liste yeniden üretildiğinde numaralar kayabilir, anahtarlar kaymaz.
-
-- `{0}` `{1}` yer tutucularını ve `<b>` `<color=...>` etiketlerini **aynen koru**.
-- Boş bıraktığın satır çevrilmemiş sayılır, oyunda İngilizce kalır — yarım dosya sorun değil.
-- Kaçışlar: `\n` `\t` `\\` ve anahtar içindeki eşittir için `\=`.
-
-### d) Kur ve gör
-
-Dosyayı şuraya koy:
-
-```
-Schedule I\UserData\ScheduleOneTR\languages\tr\00_main.txt
-```
-
-Klasördeki **tüm** `.txt` dosyaları ad sırasıyla okunup birleştirilir, yani
-`10_telefon.txt`, `20_gorevler.txt` diye bölebilirsin. Aynı anahtar iki kez geçerse
-sonradan okunan kazanır.
-
-Oyun içinde:
-
-- **F9** — çeviri dosyalarını yeniden yükle (oyunu kapatmadan).
-- **F10** — çeviriyi anlık aç/kapat (İngilizce ile karşılaştırmak için).
-
-### e) Yeni metinleri ekle
-
-Oyunu oynadıkça yeni metinler çıkar. Elle kopyalamak yerine:
-
-```bash
-python tools/merge_export.py --export "...\export\english_strings.txt" --current "...\languages\tr\00_main.txt"
-```
-
-Çevirdiğin satırları korur, yalnızca yeni anahtarları sona ekler. Önce `--dry-run`
-ile ne olacağını görebilirsin. Oyun güncellendiğinde de aynı betik işini görür:
-artık görünmeyen anahtarları siler değil, listeler.
+`<oyun>\Mods\ScheduleOneTR_Il2Cpp.dll` dosyasını sil. MelonLoader'ı da
+kaldırmak istersen `MelonLoader\` klasörünü ve `version.dll`'i sil.
 
 ---
 
-## 4. Ayarlar
+## Nasıl çalışıyor
 
-`Schedule I\UserData\MelonPreferences.cfg`, `[ScheduleOneTR]` bölümü:
+Merak edenler için, kısaca.
 
-| Anahtar | Varsayılan | Açıklama |
-|---|---|---|
-| `Enabled` | `true` | Çeviriyi aç/kapat. |
-| `LanguageFolder` | `"tr"` | `languages/` altındaki klasör adı. |
-| `ExportEnglishStrings` | `true` | Metin dökümü. Yama bitince `false` yap. |
-| `ScanIntervalSeconds` | `1.0` | Sahne taraması aralığı. `0` = kapalı. |
-| `ExportFlushSeconds` | `15.0` | Dökümün diske yazılma aralığı. |
-| `ReloadHotkey` | `"F9"` | `"None"` ile kapatılır. |
-| `ToggleHotkey` | `"F10"` | |
-| `FallbackFontName` | `""` | Yedek font. Boşsa Segoe UI → Arial → Tahoma denenir. |
-| `FallbackFontSize` | `48` | Yedek fontun atlas örnekleme boyutu. |
-| `LogDiagnostics` | `false` | Ek teşhis kaydı. |
+Oyun Unity ile yapılmış ve ekrandaki yazıları **TextMeshPro** ile çiziyor.
+Yama, MelonLoader üzerinden oyuna giriyor ve **Harmony** ile `TMP_Text.text`
+özelliğine bağlanıyor: oyun bir yazıyı ekrana koymadan hemen önce yama araya
+girip o yazının Türkçesini veriyor.
 
----
+Oyunun verisine hiç dokunmuyor. Bir ürünün adı veri tarafında hâlâ `Cocaine`;
+sadece ekranda `Kokain` görünüyor. Kayıtlar, görev mantığı, çok oyuncu
+senkronizasyonu İngilizce metinle çalışmaya devam ediyor — yamayı kaldırınca
+hiçbir iz kalmamasının sebebi bu.
 
-## 5. Nasıl çalışıyor
+**Eşleştirme** sırayla deneniyor: birebir → baş/son boşluk kırpılmış hâli →
+sayı şablonu (`Day 5` → `Day {0}`) → tek etiket sarmalı (`<b>Continue</b>`) →
+düzenli ifade kuralları.
 
-**Yakalama.** Harmony ile `TMP_Text.text` setter'ına ve `SetText(string, ...)`
-aşırı yüklemelerine prefix takılır; atanan metin yerine çevirisi yazılır.
-Parametre adları TMP sürümüne göre değiştiği için **konumsal** (`__0`) okunur.
+**Font.** Oyunun yazı tipi önceden pişirilmiş bir atlas kullanıyor; atlasta
+olmayan karakter kutu olarak çizilir. Türkçede risk altındakiler **ğ Ğ ş Ş ı
+İ**. Yama açılışta oyunun fontunu yokluyor, eksik karakter görürse Windows
+fontundan yedek bir font üretip devreye sokuyor.
 
-**Tarama.** Prefab'tan gelip hiç set edilmeyen metinler hook'a uğramaz. Saniyede bir
-sahnedeki TMP bileşenleri taranır ve metin geri atanır; atama hook'tan geçtiği için
-çeviri orada uygulanır.
-
-**Eşleştirme sırası:** birebir → baş/son boşluk kırpılmış hali → sayı şablonu
-(`Day 5` → `Day {0}`) → tek etiket sarmalı (`<b>Continue</b>`) → regex kuralları.
-Sonuçlar hem pozitif hem negatif önbelleğe alınır; sıcak yolda sözlük araması yapılır.
-
-**Font.** TMP atlasları önceden pişirilmiş olduğunda atlasta olmayan karakter kutu
-çizilir. Türkçe'de risk altındakiler **ğ Ğ ş Ş ı İ** (ö ü ç genelde Latin-1'de var).
-Mod ilk taramada oyunun fontunu yoklar; eksik karakter görürse işletim sistemi
-fontundan dinamik bir `TMP_FontAsset` üretip TMP'nin global fallback listesine ekler.
-Geri kalan her şey oyunun kendi fontuyla çizilmeye devam eder.
+Daha ayrıntısı: [docs/GELISTIRME.md](docs/GELISTIRME.md)
 
 ---
 
-## 6. Bilinen sınırlar
+## Bilinen sınırlar
 
-- **Dokuya gömülü yazı** (tabelalar, posterler, afişler) çevrilmez. Bunlar için asset
-  değiştirmek gerekir, bu modun kapsamı dışında.
-- **Büyük harf dönüşümü.** TMP'nin `<allcaps>` / `Uppercase` stili kültürden bağımsız
-  çalışır, yani `i` → `İ` değil `I` olur. Etkilenen metinleri sözlükte doğrudan büyük
-  harfle yazarak çöz (`FINISH` yerine `BİTİR`).
-- **Oyuncunun yazdığı alanlar** çevrilmez (`TMP_InputField` altındakiler atlanır).
-- **Oyun güncellemeleri** metinleri değiştirir. Yama çökmez, değişen satırlar İngilizce
-  kalır; `merge_export.py` ile yeni satırları ekle.
-- **Metni geri okuyan kod.** Oyun bir etiketin `.text` değerini okuyup mantıkta
-  kullanırsa o yer bozulabilir. Şimdiye kadar böyle bir yer görülmedi; bir şey
-  tuhaflaşırsa F10 ile çeviriyi kapatıp karşılaştır.
-- Çok oyunculuda diğer oyuncular kendi dillerinde görür; gönderilen veri İngilizce kalır.
+- **Dokuya gömülü yazılar** (tabelalar, posterler, afişler) çevrilmez —
+  bunlar resim, yazı değil.
+- **Büyük harfe çevrilen yazılarda** `i` harfi `İ` değil `I` olur. Unity'nin
+  büyük harf dönüşümü Türkçe kuralını bilmiyor.
+- **Oyuncunun yazdığı alanlar** çevrilmez (bilerek).
+- **Oyun güncellemeleri** metinleri değiştirir; değişen satırlar İngilizce kalır.
+- Hepsi çevrilmedi. Eksikleri `EKSIK_METINLER.cmd` ile toplayıp gönderebilirsin.
 
 ---
 
-## 7. Sorun giderme
+## Teşekkür
 
-MelonLoader konsolu açılışta özet yazar:
+Bu yama **[MelonLoader](https://github.com/LavaGang/MelonLoader)** üzerine
+kurulu. LavaGang ekibine ve MelonLoader'a katkı veren herkese teşekkürler —
+onların işi olmasaydı bu yama olmazdı. MelonLoader Apache-2.0 lisanslı,
+ücretsiz ve açık kaynak.
 
-```
-[Schedule I Türkçe Yama] Hazır. Yamalanan metot: 3, dil: Türkçe, satır: 0, metin dökümü: açık
-```
+Yamanın oyuna bağlanma kısmı **[Harmony](https://github.com/pardeike/Harmony)**
+(Andreas Pardeike) ve **Il2CppInterop** ile çalışıyor; ikisi de MelonLoader
+ile birlikte geliyor.
 
-| Belirti | Sebep |
-|---|---|
-| `Hiçbir TMP metodu yamalanamadı` | `GlobalUsings.cs`'teki TMP namespace'i yanlış. `Il2CppAssemblies` içindeki gerçek DLL adına bak. |
-| Satır sayısı 0 | `languages/tr/` boş ya da `LanguageFolder` başka bir klasörü gösteriyor. |
-| Harfler kutu çiziliyor | Yedek font devreye girmemiş. `FallbackFontName` değerini `Arial` yap. |
-| `export/` boş | `ExportEnglishStrings=false`, ya da `UserData` klasörüne yazma izni yok. |
-| Oyun açılmıyor | IL2CPP DLL'ini Mono dalına (veya tersi) koymuş olabilirsin. |
+Oyunun kendisi **Schedule I** — TVGS. Bu depo oyunun hiçbir dosyasını
+içermez, dağıtmaz; yalnızca ekrandaki yazının görünüşünü değiştirir.
 
 ---
 
-## Lisans / dağıtım
+## Geliştiriciler için
 
-Mod kodu senin. Oyunun hiçbir dosyası depoda bulunmaz, dağıtılması da gerekmez —
-kullanıcı kendi kurulumuna sadece DLL'i ve çeviri dosyasını ekler.
+Çeviri eklemek, metin çıkarmak, paket hazırlamak:
+**[docs/GELISTIRME.md](docs/GELISTIRME.md)**
+
+Terim sözlüğü (Dealer → Torbacı gibi kararlar):
+**[languages/tr/SOZLUK.md](languages/tr/SOZLUK.md)**
+
+---
+
+## Lisans
+
+Yamanın kodu ve çevirileri bu deponun sahibine aittir. Oyunun hiçbir dosyası
+burada bulunmaz.

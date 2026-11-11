@@ -5,3 +5,9 @@ Directory.Build.props
 export/
 __pycache__/
 extracted/
+ayrilmis/
+ScheduleOneTR-cikarici/
+dist/
+release/MelonLoader.Installer.exe
+kurulum-log.txt
+.dotnet/

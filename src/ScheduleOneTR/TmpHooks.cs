@@ -18,7 +18,9 @@ namespace ScheduleOneTR
         private static int _patched;
         public static int PatchedCount => _patched;
 
-        public static void Install(Harmony harmony)
+        // Tam ad sart: oyunun assembly'lerinden biri "Harmony" adinda bir
+        // ad alani tanimliyor ve HarmonyLib.Harmony turunu golgeliyor (CS0118).
+        public static void Install(HarmonyLib.Harmony harmony)
         {
             var prefix = new HarmonyMethod(
                 typeof(TmpHooks).GetMethod(nameof(Prefix), BindingFlags.Static | BindingFlags.NonPublic));
