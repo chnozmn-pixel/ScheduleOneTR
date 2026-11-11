@@ -116,6 +116,19 @@ foreach ($row in $rows) {
     }
     $key = if ($sep -ge 0) { $row.Substring(0, $sep) } else { $row }
 
+    # PARCA (fragment): tirnak, kesme, parantez, bosluk ya da % ile baslayan
+    # satirlar kodda birlestirilen log metinlerinin parcasidir:
+    #     "Object '" + name + "' has no data."
+    # Mod TMP bilesenine ATANAN METNIN TAMAMINI eslestirir; boyle bir parca
+    # ekranda tek basina hicbir zaman bulunmaz, yani cevirisi asla devreye
+    # girmez. Ne kadar iyi cevrilirse cevrilsin bos emek.
+    #
+    # Istisna: '%' ile baslayan kisa olanlar gercek arayuz metni olabilir
+    # ("% chance of success", "% grown").
+    if ($key -cmatch '^["''\)\s]' -or ($key.StartsWith('%') -and $key.Length -gt 30)) {
+        $dropped.Add($row); continue
+    }
+
     if (Test-Any $key $DROP)      { $dropped.Add($row); continue }
     if ($key -imatch $GAME)       { $pri.Add($row); continue }
     if ($key -match $UIMARK)      { $pri.Add($row); continue }
@@ -166,6 +179,38 @@ function Write-Bucket($path, $title, $note, $items, $withHeader) {
     } finally { $sw.Dispose() }
 }
 
+# "Buradan basla": oncelikli kovanin en guvenilir ust dilimi, guven
+# puanina gore sirali. Amac su: ilk oturumda cevirdigin her satirin
+# oyunda gercekten gorunme olasiligi yuksek olsun.
+$scored = foreach ($row in $pri) {
+    $sep = -1; $i = 0
+    while ($i -lt $row.Length) {
+        if ($row[$i] -eq '\') { $i += 2; continue }
+        if ($row[$i] -eq '=') { $sep = $i; break }
+        $i++
+    }
+    $key = if ($sep -ge 0) { $row.Substring(0, $sep) } else { $row }
+
+    $score = 0
+    if ($key -imatch $GAME)                      { $score += 3 }
+    if ($key -match '\{\d+\}|<b>|<color')        { $score += 2 }
+    if ($key.Length -le 25 -and $key -cmatch '^[A-Z]') { $score += 2 }
+    $wc = @($key -split '\s+' | Where-Object { $_.Length -gt 0 }).Count
+    if ($wc -le 4)                               { $score += 1 }
+    # motor/kutuphane kokusu kalmis olabilir
+    if ($key -imatch 'null|method|parameter|component|instance|delegate|buffer|stream|token|descriptor|layout|binding') { $score -= 4 }
+    if ($key.Length -gt 60)                      { $score -= 2 }
+    if ($key -match '\.$' -and $key.Length -gt 40) { $score -= 2 }
+
+    if ($score -ge 3) { [pscustomobject]@{ Row = $row; Key = $key; Score = $score } }
+}
+$top = @($scored | Sort-Object -Property @{Expression='Score';Descending=$true}, @{Expression={$_.Key.Length}}, 'Key' |
+        ForEach-Object { $_.Row })
+
+Write-Bucket (Join-Path $Out '00_ilk_once.txt') `
+    'BURADAN BASLA - oyunda gorunme olasiligi en yuksek satirlar' `
+    'Guven puanina gore sirali. Bu dosya 01_oncelikli.txt icinden secilmistir.' $top $true
+
 Write-Bucket (Join-Path $Out '01_oncelikli.txt') `
     'Oncelikli - oyun arayuzu olmasi cok muhtemel' `
     'Buradan basla. Esittirin sagini doldur, sol tarafa dokunma.' $pri $true
@@ -180,6 +225,7 @@ Write-Bucket (Join-Path $Out '99_atilan.txt') `
 
 $total = $rows.Count
 Write-Host ''
+Write-Host ("  00_ilk_once  : {0,6}  (%{1})  <-- buradan basla" -f $top.Count, [math]::Round(100*$top.Count/$total)) -ForegroundColor Cyan
 Write-Host ("  01_oncelikli : {0,6}  (%{1})" -f $pri.Count, [math]::Round(100*$pri.Count/$total)) -ForegroundColor Green
 Write-Host ("  02_belki     : {0,6}  (%{1})" -f $may.Count, [math]::Round(100*$may.Count/$total))
 Write-Host ("  99_atilan    : {0,6}  (%{1})" -f $dropped.Count, [math]::Round(100*$dropped.Count/$total)) -ForegroundColor DarkGray
