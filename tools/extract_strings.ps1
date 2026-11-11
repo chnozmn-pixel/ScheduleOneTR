@@ -329,11 +329,15 @@ $rawList  = New-Object 'System.Collections.Generic.List[string]'
 $meta = Join-Path $dataDir 'il2cpp_data\Metadata\global-metadata.dat'
 if (Test-Path -LiteralPath $meta) {
     Write-Host "IL2CPP metadata okunuyor: $(Split-Path $meta -Leaf)"
-    $bytes = [System.IO.File]::ReadAllBytes($meta)
-    $got = [S1Extract]::Il2Cpp($bytes, (Split-Path $meta -Leaf), $warn)
-    Write-Host "  $($got.Count) metin sabiti"
-    $rawList.AddRange($got)
-    $bytes = $null
+    $bytes = Read-GameFileBytes $meta $warn
+    if ($bytes) {
+        $got = [S1Extract]::Il2Cpp($bytes, (Split-Path $meta -Leaf), $warn)
+        Write-Host "  $($got.Count) metin sabiti"
+        $rawList.AddRange($got)
+        $bytes = $null
+    } else {
+        Write-Host '  okunamadi' -ForegroundColor Yellow
+    }
 } else {
     Write-Host 'IL2CPP metadata yok (Mono dali olabilir).'
 }
@@ -350,7 +354,11 @@ if (Test-Path -LiteralPath $managed -PathType Container) {
         if (-not (Test-Path -LiteralPath $dll -PathType Leaf)) { continue }
         $leaf = Split-Path $dll -Leaf
         Write-Host "Managed assembly okunuyor: $leaf"
-        $bytes = [System.IO.File]::ReadAllBytes($dll)
+        $bytes = Read-GameFileBytes $dll $warn
+        if (-not $bytes) {
+            Write-Host '  okunamadi' -ForegroundColor Yellow
+            continue
+        }
         $got = [S1Extract]::UserStrings($bytes, $leaf, $warn)
         Write-Host "  $($got.Count) metin sabiti"
         $rawList.AddRange($got)
@@ -364,6 +372,10 @@ if ($rawList.Count -eq 0) {
     Write-Host ''
     Write-Host 'Hic metin cikarilamadi.' -ForegroundColor Red
     foreach ($w in $warn) { Write-Host "  ! $w" -ForegroundColor Yellow }
+    if (@($warn | Where-Object { $_ -match 'another process|baska bir islem' }).Count -gt 0) {
+        Write-Host ''
+        Write-Host 'Dosya baska bir surec tarafindan kilitli. Oyunu kapatip tekrar dene.' -ForegroundColor Yellow
+    }
     exit 2
 }
 

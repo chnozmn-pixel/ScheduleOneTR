@@ -37,6 +37,51 @@ function Find-ScheduleOne {
     return $null
 }
 
+# Dosyayi, baska bir surec acik tutsa bile okur.
+#
+# [IO.File]::ReadAllBytes varsayilan olarak FileShare.Read ile acar; oyun
+# calisirken global-metadata.dat veya Assembly-CSharp.dll kilitli olabilir ve
+# bu "another process" hatasi verir. Biz FileShare.ReadWrite + Delete ile
+# aciyoruz: paylasimi en gevsek biz talep ediyoruz, boylece oyun acikken de
+# okunur. Yalnizca okuma; dosyaya hicbir sey yazilmaz.
+#
+# Okunamazsa $null doner ve sebebi $Warn listesine yazar.
+function Read-GameFileBytes([string]$Path, $Warn) {
+    $name = Split-Path $Path -Leaf
+    $fs = $null
+    try {
+        $fs = New-Object System.IO.FileStream(
+            $Path,
+            [System.IO.FileMode]::Open,
+            [System.IO.FileAccess]::Read,
+            ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+
+        $len = $fs.Length
+        if ($len -gt [int]::MaxValue) {
+            if ($null -ne $Warn) { $Warn.Add("${name}: dosya cok buyuk ($len bayt).") }
+            return $null
+        }
+
+        $buf = New-Object byte[] $len
+        $read = 0
+        while ($read -lt $len) {
+            $n = $fs.Read($buf, $read, [int]($len - $read))
+            if ($n -le 0) { break }
+            $read += $n
+        }
+        if ($read -lt $len) {
+            if ($null -ne $Warn) { $Warn.Add("${name}: dosya tam okunamadi ($read/$len bayt).") }
+            return $null
+        }
+        return $buf
+    } catch {
+        if ($null -ne $Warn) { $Warn.Add("${name}: okunamadi - $($_.Exception.Message)") }
+        return $null
+    } finally {
+        if ($fs) { $fs.Dispose() }
+    }
+}
+
 # Verilen yol bossa oyunu bulur, yoksa hata yazip betigi bitirir.
 function Resolve-GameDir([string]$GameDir) {
     if ($GameDir) {
