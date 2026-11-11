@@ -45,6 +45,29 @@ src/ScheduleOneTR/
 
 ---
 
+## 1b. Başka bir makinede çalışmaya başlamak
+
+```bash
+git clone https://github.com/chnozmn-pixel/ScheduleOneTR.git
+cd ScheduleOneTR
+```
+
+Gerekenler:
+
+| | Ne için |
+|---|---|
+| .NET SDK 8 | modu derlemek |
+| MelonLoader 0.7.3 | modu çalıştırmak |
+| Python 3.9+ | `tools/` altındaki betikler |
+| UnityPy (isteğe bağlı) | `pip install UnityPy` — sadece asset taraması için |
+
+`Directory.Build.props` depoya dahil değil (her makinede oyun yolu farklı).
+`src/ScheduleOneTR/Directory.Build.props.example`'ı kopyalayıp yolu düzelt,
+ya da her derlemede `-GameDir` ver.
+
+Çeviri dosyasını iki makine arasında senkron tutmanın en kolay yolu onu depoda
+tutmak: `languages/tr/` altındaki dosyaları commit'le, diğer makinede `git pull`.
+
 ## 2. Derleme
 
 .NET SDK 8 gerekir (IL2CPP hedefi net6.0, Mono hedefi net472).
