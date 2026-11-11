@@ -17,6 +17,13 @@ kolaylaştırmak için oyunda gördüğü **bütün İngilizce metinleri dosyaya
 extract.cmd                      metin çıkarıcı — çift tıkla, kurulum gerektirmez
 merge.cmd                        yeni metinleri çeviriye ekler — aynı şekilde
 build.ps1                        derleme betiği
+release/                         son kullanıcı paketinin şablonları
+  KUR.cmd / KALDIR.cmd           kullanıcının tıkladığı dosyalar
+  EKSIK_METINLER.cmd             İngilizce kalanları toplar
+  OKUBENI.txt                    kullanıcı kılavuzu
+tools/make_release.ps1           derler + kullanıcı zip'ini üretir
+tools/install.ps1                kurulumcunun asıl mantığı
+tools/check_translation.ps1      çeviri dosyasını denetler
 languages/tr/00_main.txt         çeviri dosyası şablonu (boş)
 tools/extract_strings.ps1        metin çıkarıcı (PowerShell, bağımlılık yok)
 tools/extract_strings.py         aynısı + UnityPy ile asset taraması (Python)
@@ -33,6 +40,48 @@ src/ScheduleOneTR/
   FontFallback.cs                ğ ş ı İ için yedek font
   GlobalUsings.cs                IL2CPP / Mono tip takma adları
 ```
+
+---
+
+## 0. Son kullanıcıya paket hazırlamak
+
+Test edecek kişinin kod bilgisine ihtiyacı yok, hiçbir şey derlemez. Ona
+**derlenmiş DLL + çeviriler + tek tıklık kurulumcu** içeren bir zip verilir.
+
+Paketi, **oyunun ve .NET SDK'nın bulunduğu makinede** hazırla:
+
+```powershell
+.\tools\make_release.ps1
+```
+
+Derler, `dist\ScheduleOneTR-TR-<tarih>.zip` üretir, içindeki çeviri
+dosyalarını denetler. Mevcut DLL'i kullanmak için `-SkipBuild`, alternate
+dal için `-Mono`. İki dalı da derlersen ikisinin DLL'i birlikte paketlenir
+ve kurulumcu doğru olanı kendisi seçer.
+
+Kullanıcının gördüğü:
+
+```
+KUR.cmd              çift tıkla, kurulum biter
+KALDIR.cmd           yamayı kaldırır
+EKSIK_METINLER.cmd   İngilizce kalan yazıları masaüstüne toplar
+OKUBENI.txt          kullanım ve sık sorulanlar
+```
+
+`KUR.cmd` oyunu Steam kütüphanelerinden kendisi bulur, IL2CPP mi Mono mu
+olduğunu anlar, doğru DLL'i `Mods\`'a ve çevirileri
+`UserData\ScheduleOneTR\languages\tr\`'ye kopyalar. MelonLoader kurulu
+değilse tek onayla devam eder: `release\MelonLoader.Installer.exe`'yi
+pakete koyduysan onu açar, koymadıysan indirme sayfasını açar.
+
+> MelonLoader Apache-2.0 lisanslı, kurucusunu pakete koymak serbest.
+> `release/MelonLoader.Installer.exe` `.gitignore`'da — depoya girmez,
+> paketleme sırasında varsa kullanılır.
+
+**Geri bildirim döngüsü.** Mod, karşılığı olmayan metinleri oyun içinde
+kaydediyor (`ExportEnglishStrings` varsayılan olarak açık). Kullanıcı
+`EKSIK_METINLER.cmd`'yi çalıştırıp masaüstündeki dosyayı sana gönderir;
+sen `merge.cmd` ile çeviriye eklersin.
 
 ---
 

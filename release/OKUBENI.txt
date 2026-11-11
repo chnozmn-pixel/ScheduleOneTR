@@ -1,0 +1,78 @@
+Schedule I - Turkce Yama
+========================
+
+Kurulum tek tiklama. Hicbir sey indirmen, kurman ya da ayar yapman
+gerekmiyor (MelonLoader yoksa onu sorar, o kadar).
+
+
+KURMAK ICIN
+-----------
+
+    KUR.cmd  dosyasina cift tikla.
+
+Oyunu kendisi bulur, dosyalari yerine koyar, bitince ne yapacagini yazar.
+Sonra oyunu Steam'den normal sekilde baslat.
+
+Ilk acilis uzun surer (bir-iki dakika, bazen daha fazla). Siyah ekran
+gorursen bekle, takilmadi.
+
+
+OYUN ICINDE
+-----------
+
+    F10   cevirivi kapatir/acar  - bir yazinin aslini gormek istersen
+    F9    ceviri dosyalarini yeniden yukler
+
+
+KALDIRMAK ICIN
+--------------
+
+    KALDIR.cmd  dosyasina cift tikla.
+
+Oyun tekrar Ingilizce acilir. Kayitli oyunlarina dokunmaz.
+
+
+YARDIM EDEBILIRSIN
+------------------
+
+Mod, oyunda Ingilizce kalan her yaziyi kendi kaydediyor. Bir sure
+oynadiktan sonra:
+
+    EKSIK_METINLER.cmd  dosyasina cift tikla.
+
+Masaustune bir dosya koyar. Onu gonderirsen o yazilar da cevrilir.
+Ne kadar cok ekran gezersen (menuler, telefon, gorevler, dukkanlar)
+o kadar isimize yarar.
+
+
+SIK SORULANLAR
+--------------
+
+Kayitli oyunlarim bozulur mu?
+    Hayir. Yama sadece ekranda gorunen yaziyi degistiriyor; oyunun
+    kendi verisine dokunmuyor. Kayitlar ve coklu oyuncu Ingilizce
+    metinle calismaya devam ediyor.
+
+Coklu oyuncuda sorun olur mu?
+    Olmaz. Karsi taraf kendi dilinde gorur.
+
+Bazi yazilar hala Ingilizce.
+    Normal, hepsi henuz cevrilmedi. EKSIK_METINLER.cmd ile toplayip
+    gonderirsen sonraki surumde girer.
+
+Harfler kare kare / bos kutu cikiyor.
+    Font sorunu, haber ver. Oyunun yazi tipinde Turkce harf yoksa mod
+    yedek font devreye sokuyor ama her ekranda tutmayabilir.
+
+Oyun hic acilmiyor.
+    KALDIR.cmd calistir, oyun eski haline doner. Sonra haber ver.
+
+Oyun guncellenince ne olur?
+    Yama cokmez, degisen yazilar Ingilizce kalir. Yeni surum cikana
+    kadar oyle gorunur.
+
+
+Virus uyarisi alirsam?
+    MelonLoader ve mod dosyalari imzali olmadigi icin Windows ya da
+    antivirus uyarabilir. Dosyalarin kaynagi:
+    github.com/chnozmn-pixel/ScheduleOneTR

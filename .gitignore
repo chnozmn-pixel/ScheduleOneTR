@@ -7,3 +7,5 @@ __pycache__/
 extracted/
 ayrilmis/
 ScheduleOneTR-cikarici/
+dist/
+release/MelonLoader.Installer.exe
