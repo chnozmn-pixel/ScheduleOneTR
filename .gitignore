@@ -5,3 +5,5 @@ Directory.Build.props
 export/
 __pycache__/
 extracted/
+ayrilmis/
+ScheduleOneTR-cikarici/
